@@ -1,0 +1,9 @@
+{
+  "dart.flutterDeviceId": "chrome",
+  "dart.flutterSelectDeviceWhenConnected": false,
+  "dart.flutterRunAdditionalArgs": [
+    "--web-port=7357"
+  ],
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false
+}
