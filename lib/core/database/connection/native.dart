@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 LazyDatabase openConnection() {
   return LazyDatabase(() async {
     final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'eta_tenis_crm.sqlite'));
+    final file = File(p.join(dir.path, 'eta_tenis_crm_v8.sqlite'));
     return NativeDatabase.createInBackground(file);
   });
 }

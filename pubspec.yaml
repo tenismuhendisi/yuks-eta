@@ -13,19 +13,21 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   flutter_riverpod: ^2.3.6
-  drift: 2.12.0
+  drift: ^2.22.1
   sqlite3_flutter_libs: ^0.5.15
   path_provider: ^2.1.1
   path: ^1.8.3
-  intl: 0.18.0
+  intl: ^0.20.2
   uuid: ^4.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
-  drift_dev: 2.12.0
-  build_runner: ^2.4.6
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.13
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/eta_logo.png

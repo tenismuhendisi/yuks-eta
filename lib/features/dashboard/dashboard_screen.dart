@@ -61,6 +61,11 @@ class DashboardScreen extends ConsumerWidget {
             subtitle: 'Kortları kilitleyin veya müsaitlik durumunu görün',
           ),
           _InfoCard(
+            icon: Icons.fact_check,
+            title: 'Yoklama Takibi',
+            subtitle: 'Antrenörlerin aldığı yoklamaları görün',
+          ),
+          _InfoCard(
             icon: Icons.payments,
             title: 'Ödeme Takibi',
             subtitle: 'Tüm ödemeleri yönetin',
@@ -79,9 +84,9 @@ class DashboardScreen extends ConsumerWidget {
             subtitle: 'Öğrenci ekle/çıkar, seviye ve yaş düzenle',
           ),
           _InfoCard(
-            icon: Icons.copy_all,
-            title: 'Şablon Dersler',
-            subtitle: 'Gelecek derslerinizi hayali olarak planlayın',
+            icon: Icons.fact_check,
+            title: 'Yoklama',
+            subtitle: 'Derslerde yoklama alın, devam durumunu kaydedin',
           ),
         ];
       case UserRole.athlete:
@@ -92,6 +97,11 @@ class DashboardScreen extends ConsumerWidget {
             subtitle: 'Boş kortlara rezervasyon yapın',
           ),
           _InfoCard(
+            icon: Icons.fact_check,
+            title: 'Yoklamalarım',
+            subtitle: 'Ders devam durumunuzu görün',
+          ),
+          _InfoCard(
             icon: Icons.payments,
             title: 'Ödemelerim',
             subtitle: 'Aidat ve ders ödemelerinizi görün',
@@ -100,6 +110,11 @@ class DashboardScreen extends ConsumerWidget {
       case UserRole.parent:
         return [
           _ParentAthletesCard(parentId: userId),
+          _InfoCard(
+            icon: Icons.fact_check,
+            title: 'Yoklama',
+            subtitle: 'Çocuğunuzun ders devamını takip edin',
+          ),
           _InfoCard(
             icon: Icons.payments,
             title: 'Ödemeler',

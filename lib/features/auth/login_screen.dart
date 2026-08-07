@@ -1,4 +1,3 @@
-import 'package:crm_app/core/constants/app_constants.dart';
 import 'package:crm_app/core/enums/user_role.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +26,7 @@ const _demoAccounts = [
   ),
   _DemoAccount(
     role: UserRole.coach,
-    email: 'ahmet@eta.com',
+    email: 'elif.aktus@eta.com',
     password: 'coach123',
     icon: Icons.sports,
   ),
@@ -102,21 +101,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.sports_tennis, size: 64, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  AppConstants.appName,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                Image.asset(
+                  'assets/eta_logo.png',
+                  height: 88,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 Text(
                   'CRM Giriş',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey.shade600,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w600,
                       ),
                 ),
                 const SizedBox(height: 32),

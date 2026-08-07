@@ -60,6 +60,9 @@ class Lessons extends Table {
   DateTimeColumn get endTime => dateTime()();
   IntColumn get maxParticipants => integer().withDefault(const Constant(1))();
   BoolColumn get isTemplate => boolean().withDefault(const Constant(false))();
+  /// 'tentative' | 'confirmed'
+  TextColumn get status => text().withDefault(const Constant('confirmed'))();
+  RealColumn get price => real().nullable()();
   TextColumn get title => text().nullable()();
   TextColumn get notes => text().nullable()();
 
@@ -111,6 +114,19 @@ class ParentAthleteLinks extends Table {
   Set<Column> get primaryKey => {parentId, athleteId};
 }
 
+class LessonAttendances extends Table {
+  TextColumn get id => text()();
+  TextColumn get lessonId => text().references(Lessons, #id)();
+  TextColumn get userId => text().references(Users, #id)();
+  TextColumn get status => text()();
+  DateTimeColumn get markedAt => dateTime()();
+  TextColumn get markedById => text().references(Users, #id)();
+  TextColumn get notes => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Users,
   Courts,
@@ -121,12 +137,13 @@ class ParentAthleteLinks extends Table {
   Payments,
   StudentProfiles,
   ParentAthleteLinks,
+  LessonAttendances,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -137,6 +154,14 @@ class AppDatabase extends _$AppDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await SeedData.addExtraCourts(this);
+          }
+          if (from < 3) {
+            await m.createTable(lessonAttendances);
+            await SeedData.seedAcademyRoster(this);
+          }
+          if (from < 4) {
+            await m.addColumn(lessons, lessons.status);
+            await m.addColumn(lessons, lessons.price);
           }
         },
       );
@@ -157,7 +182,20 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<User>> getAllUsers() => select(users).get();
 
+  Future<List<User>> searchAthletesByName(String query, {int limit = 12}) async {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return [];
+    final athletes = await getUsersByRole('athlete');
+    return athletes
+        .where((u) => u.name.toLowerCase().contains(q))
+        .take(limit)
+        .toList();
+  }
+
   Future<void> insertUser(UsersCompanion user) => into(users).insert(user);
+
+  Future<void> updateUser(String id, UsersCompanion user) =>
+      (update(users)..where((u) => u.id.equals(id))).write(user);
 
   // --- Courts ---
 
@@ -235,8 +273,13 @@ class AppDatabase extends _$AppDatabase {
       (update(lessons)..where((l) => l.id.equals(id))).write(lesson);
 
   Future<void> deleteLesson(String id) async {
+    await (delete(lessonAttendances)..where((a) => a.lessonId.equals(id))).go();
     await (delete(lessonParticipants)..where((p) => p.lessonId.equals(id))).go();
     await (delete(lessons)..where((l) => l.id.equals(id))).go();
+  }
+
+  Future<Lesson?> getLessonById(String id) {
+    return (select(lessons)..where((l) => l.id.equals(id))).getSingleOrNull();
   }
 
   // --- Lesson Participants ---
@@ -244,6 +287,11 @@ class AppDatabase extends _$AppDatabase {
   Future<List<LessonParticipant>> getParticipantsForLesson(String lessonId) {
     return (select(lessonParticipants)..where((p) => p.lessonId.equals(lessonId)))
         .get();
+  }
+
+  Future<List<LessonParticipant>> getParticipantsForLessons(List<String> lessonIds) {
+    if (lessonIds.isEmpty) return Future.value([]);
+    return (select(lessonParticipants)..where((p) => p.lessonId.isIn(lessonIds))).get();
   }
 
   Future<void> insertParticipant(LessonParticipantsCompanion p) =>
@@ -254,6 +302,68 @@ class AppDatabase extends _$AppDatabase {
           ..where((p) => p.lessonId.equals(lessonId))
           ..where((p) => p.userId.equals(userId)))
         .go();
+  }
+
+  // --- Lesson Attendances ---
+
+  Future<List<LessonAttendance>> getAttendancesForLesson(String lessonId) {
+    return (select(lessonAttendances)..where((a) => a.lessonId.equals(lessonId))).get();
+  }
+
+  Stream<List<LessonAttendance>> watchAttendancesForUser(String userId) {
+    return (select(lessonAttendances)
+          ..where((a) => a.userId.equals(userId))
+          ..orderBy([(a) => OrderingTerm.desc(a.markedAt)]))
+        .watch();
+  }
+
+  Future<List<LessonAttendance>> getAttendancesForUser(String userId) {
+    return (select(lessonAttendances)
+          ..where((a) => a.userId.equals(userId))
+          ..orderBy([(a) => OrderingTerm.desc(a.markedAt)]))
+        .get();
+  }
+
+  Future<List<LessonAttendance>> getAttendancesForUsers(List<String> userIds) {
+    if (userIds.isEmpty) return Future.value([]);
+    return (select(lessonAttendances)
+          ..where((a) => a.userId.isIn(userIds))
+          ..orderBy([(a) => OrderingTerm.desc(a.markedAt)]))
+        .get();
+  }
+
+  Future<List<LessonAttendance>> getRecentAttendances({int limit = 100}) {
+    return (select(lessonAttendances)
+          ..orderBy([(a) => OrderingTerm.desc(a.markedAt)])
+          ..limit(limit))
+        .get();
+  }
+
+  Future<void> upsertAttendance(LessonAttendancesCompanion attendance) =>
+      into(lessonAttendances).insertOnConflictUpdate(attendance);
+
+  Future<void> saveLessonAttendances({
+    required String lessonId,
+    required String markedById,
+    required Map<String, String> userStatus,
+  }) async {
+    final existing = await getAttendancesForLesson(lessonId);
+    final byUser = {for (final a in existing) a.userId: a};
+    final now = DateTime.now();
+
+    for (final entry in userStatus.entries) {
+      final prev = byUser[entry.key];
+      await into(lessonAttendances).insertOnConflictUpdate(
+        LessonAttendancesCompanion.insert(
+          id: prev?.id ?? 'att-$lessonId-${entry.key}',
+          lessonId: lessonId,
+          userId: entry.key,
+          status: entry.value,
+          markedAt: now,
+          markedById: markedById,
+        ),
+      );
+    }
   }
 
   // --- Payments ---

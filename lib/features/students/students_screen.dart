@@ -68,6 +68,27 @@ class _StudentTile extends ConsumerWidget {
   final StudentProfile profile;
   final String coachId;
 
+  Future<bool> _confirmRemove(BuildContext context, String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Öğrenciyi Çıkar'),
+        content: Text('$name listenizden çıkarılsın mı?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Çıkar'),
+          ),
+        ],
+      ),
+    );
+    return confirm == true;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return FutureBuilder<User?>(
@@ -76,50 +97,68 @@ class _StudentTile extends ConsumerWidget {
         final user = snapshot.data;
         if (user == null) return const SizedBox.shrink();
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: CircleAvatar(child: Text(user.name.characters.first)),
-            title: Text(user.name),
-            subtitle: Text(
-              [
-                if (profile.age != null) '${profile.age} yaş',
-                if (profile.level != null) 'Seviye: ${profile.level}',
-                user.email,
-              ].join(' · '),
+        return Dismissible(
+          key: ValueKey('student-${profile.userId}-${profile.coachId}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _confirmRemove(context, user.name),
+          onDismissed: (_) {
+            ref.read(databaseProvider).removeStudentFromCoach(profile.userId, coachId);
+          },
+          background: Container(
+            alignment: Alignment.centerRight,
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.error,
+              borderRadius: BorderRadius.circular(12),
             ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (action) async {
-                if (action == 'edit') {
-                  await showDialog(
-                    context: context,
-                    builder: (_) => StudentFormDialog(
-                      coachId: coachId,
-                      existingProfile: profile,
-                      existingUser: user,
-                    ),
-                  );
-                } else if (action == 'remove') {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Öğrenciyi Çıkar'),
-                      content: Text('${user.name} listenizden çıkarılsın mı?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Çıkar')),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await ref.read(databaseProvider).removeStudentFromCoach(profile.userId, coachId);
-                  }
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Düzenle')),
-                const PopupMenuItem(value: 'remove', child: Text('Listeden Çıkar')),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Çıkar',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.delete_outline, color: Colors.white),
               ],
+            ),
+          ),
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(child: Text(user.name.characters.first)),
+              title: Text(user.name),
+              subtitle: Text(
+                [
+                  if (profile.age != null) '${profile.age} yaş',
+                  if (profile.level != null) 'Seviye: ${profile.level}',
+                  user.email,
+                ].join(' · '),
+              ),
+              trailing: PopupMenuButton<String>(
+                onSelected: (action) async {
+                  if (action == 'edit') {
+                    await showDialog(
+                      context: context,
+                      builder: (_) => StudentFormDialog(
+                        coachId: coachId,
+                        existingProfile: profile,
+                        existingUser: user,
+                      ),
+                    );
+                  } else if (action == 'remove') {
+                    final confirmed = await _confirmRemove(context, user.name);
+                    if (confirmed) {
+                      await ref.read(databaseProvider).removeStudentFromCoach(profile.userId, coachId);
+                    }
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Düzenle')),
+                  const PopupMenuItem(value: 'remove', child: Text('Listeden Çıkar')),
+                ],
+              ),
             ),
           ),
         );
@@ -127,3 +166,4 @@ class _StudentTile extends ConsumerWidget {
     );
   }
 }
+

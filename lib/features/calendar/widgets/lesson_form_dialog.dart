@@ -1,9 +1,11 @@
 import 'package:crm_app/core/utils/app_date_format.dart';
 import 'package:crm_app/core/constants/app_constants.dart';
 import 'package:crm_app/core/database/app_database.dart';
+import 'package:crm_app/core/enums/lesson_status.dart';
 import 'package:crm_app/core/enums/lesson_type.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
+import 'package:crm_app/features/attendance/widgets/take_attendance_dialog.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -131,6 +133,7 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
         endTime: _end,
         maxParticipants: Value(_type == LessonType.group ? _maxParticipants : _maxParticipants.clamp(1, 3)),
         isTemplate: Value(_isTemplate),
+        status: Value(LessonStatus.confirmed.name),
         title: Value(_titleController.text.trim().isEmpty ? null : _titleController.text.trim()),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
       ));
@@ -144,6 +147,7 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
           endTime: Value(_end),
           maxParticipants: Value(_type == LessonType.group ? _maxParticipants : _maxParticipants.clamp(1, 3)),
           isTemplate: Value(_isTemplate),
+          status: Value(LessonStatus.confirmed.name),
           title: Value(_titleController.text.trim().isEmpty ? null : _titleController.text.trim()),
           notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
         ),
@@ -324,6 +328,21 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
         ),
       ),
       actions: [
+        if (widget.existingLesson != null &&
+            !widget.existingLesson!.isTemplate &&
+            widget.existingLesson!.type == 'group')
+          TextButton(
+            onPressed: () async {
+              await showDialog<bool>(
+                context: context,
+                builder: (_) => TakeAttendanceDialog(
+                  lesson: widget.existingLesson!,
+                  coachId: widget.coachId,
+                ),
+              );
+            },
+            child: const Text('Yoklama'),
+          ),
         if (widget.existingLesson != null)
           TextButton(onPressed: _delete, child: const Text('Sil', style: TextStyle(color: Colors.red))),
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
