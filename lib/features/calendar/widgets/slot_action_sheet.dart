@@ -40,7 +40,7 @@ Future<SlotPlanAction?> showSlotActionSheet(BuildContext context) {
                   child: Icon(Icons.event_note, color: Colors.blue.shade800),
                 ),
                 title: const Text('Ders planla'),
-                subtitle: const Text('Grup / şablon / onaylı ders formu'),
+                subtitle: const Text('Grup veya onaylı özel ders (kort gerekir)'),
                 onTap: () => Navigator.pop(ctx, SlotPlanAction.planLesson),
               ),
               const SizedBox(height: 4),

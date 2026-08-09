@@ -20,6 +20,9 @@ class CourtSlot {
     this.lessonType,
     this.lessonTitle,
     this.participantInitials,
+    this.participantNames,
+    this.participantCount,
+    this.representativeFirstName,
   });
 
   final String courtId;
@@ -34,13 +37,17 @@ class CourtSlot {
   /// 'group' | 'private'
   final String? lessonType;
   final String? lessonTitle;
-  /// Özel ders: "EK·BY"
+  /// Özel ders: eski baş harf formatı (yedek)
   final String? participantInitials;
+  /// Özel ders: "ahmet-osman"
+  final String? participantNames;
+  final int? participantCount;
+  final String? representativeFirstName;
 
   bool get isGroupLesson => status == SlotStatus.lesson && lessonType == 'group';
   bool get isPrivateLesson => status == SlotStatus.lesson && lessonType == 'private';
 
-  /// Üst satır: Ç15 / Y22 veya öğrenci baş harfleri.
+  /// Üst satır: grup kodu veya öğrenci isimleri.
   String? get primaryLabel {
     if (isGroupLesson) {
       final t = lessonTitle?.trim();
@@ -54,13 +61,20 @@ class CourtSlot {
       }
       return t;
     }
-    if (isPrivateLesson) return participantInitials;
+    if (isPrivateLesson) {
+      return participantNames ?? participantInitials;
+    }
     return null;
   }
 
-  /// Alt satır: antrenör adı.
-  String? get secondaryLabel =>
-      status == SlotStatus.lesson ? coachName : null;
+  /// Alt satır: grupta temsilci; yoksa antrenör.
+  String? get secondaryLabel {
+    if (status != SlotStatus.lesson) return null;
+    if (isGroupLesson && representativeFirstName != null) {
+      return representativeFirstName;
+    }
+    return coachName;
+  }
 }
 
 class CourtAvailabilityService {
@@ -100,28 +114,47 @@ class CourtAvailabilityService {
       if (u != null) coaches[id] = u;
     }
 
-    final privateLessonIds = lessons
-        .where((l) => !l.isTemplate && l.type == 'private' && l.status != 'tentative')
-        .map((l) => l.id)
+    final confirmedLessons = lessons
+        .where((l) => !l.isTemplate && l.courtId != null && l.status != 'tentative')
         .toList();
-    final allParts = await _db.getParticipantsForLessons(privateLessonIds);
-    final userIds = allParts.map((p) => p.userId).toSet();
+    final lessonIds = confirmedLessons.map((l) => l.id).toList();
+    final allParts = await _db.getParticipantsForLessons(lessonIds);
+    final userIds = <String>{
+      ...allParts.map((p) => p.userId),
+      ...rentals.map((r) => r.athleteId),
+      for (final l in confirmedLessons)
+        if (l.representativeUserId != null) l.representativeUserId!,
+    };
     final usersById = <String, User>{};
-    for (final id in {...userIds, ...rentals.map((r) => r.athleteId)}) {
+    for (final id in userIds) {
       final u = await _db.getUserById(id);
       if (u != null) usersById[id] = u;
     }
-    final initialsByLesson = <String, String>{};
+    String firstName(String? full) {
+      final t = (full ?? '').trim();
+      if (t.isEmpty) return '';
+      return t.split(RegExp(r'\s+')).first;
+    }
+
     final partsByLesson = <String, List<LessonParticipant>>{};
     for (final p in allParts) {
       partsByLesson.putIfAbsent(p.lessonId, () => []).add(p);
     }
+    final initialsByLesson = <String, String>{};
+    final namesByLesson = <String, String>{};
+    final countByLesson = <String, int>{};
     for (final entry in partsByLesson.entries) {
-      final initials = entry.value
+      final firstNames = entry.value
+          .map((p) => firstName(usersById[p.userId]?.name))
+          .where((s) => s.isNotEmpty)
+          .toList();
+      countByLesson[entry.key] = firstNames.length;
+      namesByLesson[entry.key] =
+          firstNames.map((n) => n.toLowerCase()).join('-');
+      initialsByLesson[entry.key] = entry.value
           .map((p) => _nameInitials(usersById[p.userId]?.name ?? ''))
           .where((s) => s.isNotEmpty)
           .join('·');
-      initialsByLesson[entry.key] = initials;
     }
 
     // O(1) arama: courtId|yyyy-m-d|hour
@@ -202,6 +235,13 @@ class CourtAvailabilityService {
                 participantInitials: lesson.type == 'private'
                     ? initialsByLesson[lesson.id]
                     : null,
+                participantNames: lesson.type == 'private'
+                    ? namesByLesson[lesson.id]
+                    : null,
+                participantCount: countByLesson[lesson.id] ?? lesson.maxParticipants,
+                representativeFirstName: lesson.representativeUserId == null
+                    ? null
+                    : firstName(usersById[lesson.representativeUserId]?.name),
               ));
             } else {
               final rental = rentalByKey[k];

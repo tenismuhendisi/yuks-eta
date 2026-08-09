@@ -1,4 +1,6 @@
 import 'package:crm_app/core/database/app_database.dart';
+import 'package:crm_app/core/enums/ball_level.dart';
+import 'package:crm_app/core/utils/email_from_name.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -57,6 +59,32 @@ class SeedData {
     });
   }
 
+  /// Mevcut sporcuların seviye/e-posta alanlarını ITF top + isim mailine çevirir.
+  static Future<void> syncAthleteBallLevelsAndEmails(AppDatabase db) async {
+    final athletes = await db.getUsersByRole('athlete');
+    for (final u in athletes) {
+      final email = emailFromPersonName(u.name);
+      if (u.email != email) {
+        await db.updateUser(u.id, UsersCompanion(email: Value(email)));
+      }
+    }
+
+    final profiles = await db.select(db.studentProfiles).get();
+    for (final p in profiles) {
+      final normalized = BallLevel.normalizeLabel(p.level);
+      if (p.level != normalized) {
+        await db.upsertStudentProfile(StudentProfilesCompanion(
+          userId: Value(p.userId),
+          coachId: Value(p.coachId),
+          age: Value(p.age),
+          level: Value(normalized),
+          notes: Value(p.notes),
+          updatedAt: Value(DateTime.now()),
+        ));
+      }
+    }
+  }
+
   /// Antrenör ad/e-posta güncellemesi (mevcut DB için).
   static Future<void> syncCoachNames(AppDatabase db) async {
     for (final coach in _coaches) {
@@ -75,6 +103,7 @@ class SeedData {
     final existing = await db.getUserById(_coaches.first.id);
     if (existing != null) {
       await syncCoachNames(db);
+      await syncAthleteBallLevelsAndEmails(db);
       return;
     }
 
@@ -134,10 +163,11 @@ class SeedData {
           final personName = nextPersonName();
           groupAthletes.add(id);
           athleteIdsForCoach.add(id);
+          final age = g.isChild ? 9 + (i % 5) : 20 + (i % 8);
           users.add(UsersCompanion.insert(
             id: id,
             name: personName,
-            email: '$id@eta.com',
+            email: emailFromPersonName(personName),
             password: 'sporcu123',
             role: 'athlete',
             createdAt: DateTime.now(),
@@ -145,34 +175,14 @@ class SeedData {
           profiles.add(StudentProfilesCompanion.insert(
             userId: id,
             coachId: coach.id,
-            age: Value(g.isChild ? 9 + (i % 5) : 20 + (i % 8)),
-            level: Value(g.isChild ? 'Başlangıç' : 'Orta'),
+            age: Value(age),
+            level: Value(_ballLevelForAge(age)),
             notes: Value('Grup: $code'),
             updatedAt: DateTime.now(),
           ));
         }
 
         for (final weekday in g.weekdays) {
-          final templateId = 'tpl-${coach.id}-$code-$weekday';
-          lessons.add(LessonsCompanion.insert(
-            id: templateId,
-            coachId: coach.id,
-            type: 'group',
-            startTime: _at(thisMonday, weekday, g.hour),
-            endTime: _at(thisMonday, weekday, g.hour).add(const Duration(hours: 1)),
-            maxParticipants: Value(g.memberCount),
-            isTemplate: const Value(true),
-            title: Value(code),
-            notes: const Value('Haftalık grup dersi (şablon)'),
-          ));
-          for (final aid in groupAthletes) {
-            participants.add(LessonParticipantsCompanion.insert(
-              id: _uuid.v4(),
-              lessonId: templateId,
-              userId: aid,
-            ));
-          }
-
           // Somut dersler: geçen / bu / gelecek hafta
           for (final monday in [lastMonday, thisMonday, nextMonday]) {
             final lessonId =
@@ -226,15 +236,18 @@ class SeedData {
       for (var pi = 0; pi < schedule.privates.length; pi++) {
         final p = schedule.privates[pi];
         final privateAthletes = <String>[];
+        final privateFirstNames = <String>[];
         for (var i = 0; i < p.memberCount; i++) {
           final id = nextAthleteId();
           final personName = nextPersonName();
           privateAthletes.add(id);
+          privateFirstNames.add(personName.split(' ').first.toLowerCase());
           athleteIdsForCoach.add(id);
+          final age = 13 + i;
           users.add(UsersCompanion.insert(
             id: id,
             name: personName,
-            email: '$id@eta.com',
+            email: emailFromPersonName(personName),
             password: 'sporcu123',
             role: 'athlete',
             createdAt: DateTime.now(),
@@ -242,33 +255,14 @@ class SeedData {
           profiles.add(StudentProfilesCompanion.insert(
             userId: id,
             coachId: coach.id,
-            age: Value(13 + i),
-            level: const Value('İleri'),
+            age: Value(age),
+            level: Value(_ballLevelForAge(age)),
             notes: Value('Özel ders ${p.memberCount} kişi'),
             updatedAt: DateTime.now(),
           ));
         }
 
-        final title = 'Özel ${p.memberCount}K';
-        final templateId = 'tpl-${coach.id}-ozel-$pi';
-        lessons.add(LessonsCompanion.insert(
-          id: templateId,
-          coachId: coach.id,
-          type: 'private',
-          startTime: _at(thisMonday, p.weekday, p.hour),
-          endTime: _at(thisMonday, p.weekday, p.hour).add(const Duration(hours: 1)),
-          maxParticipants: Value(p.memberCount),
-          isTemplate: const Value(true),
-          title: Value(title),
-          notes: const Value('Haftalık özel ders (şablon)'),
-        ));
-        for (final aid in privateAthletes) {
-          participants.add(LessonParticipantsCompanion.insert(
-            id: _uuid.v4(),
-            lessonId: templateId,
-            userId: aid,
-          ));
-        }
+        final title = privateFirstNames.join('-');
 
         for (final monday in [lastMonday, thisMonday, nextMonday]) {
           final lessonId =
@@ -312,7 +306,7 @@ class SeedData {
     users.add(UsersCompanion.insert(
       id: 'athlete-demo',
       name: 'Can Yılmaz',
-      email: 'can@eta.com',
+      email: emailFromPersonName('Can Yılmaz'),
       password: 'sporcu123',
       role: 'athlete',
       phone: const Value('0544 777 8899'),
@@ -322,7 +316,7 @@ class SeedData {
       userId: 'athlete-demo',
       coachId: _coaches.first.id,
       age: const Value(14),
-      level: const Value('Orta'),
+      level: Value(BallLevel.green.label),
       updatedAt: DateTime.now(),
     ));
     parentLinks.add(ParentAthleteLinksCompanion.insert(
@@ -360,6 +354,13 @@ class SeedData {
     if (toAdd.isNotEmpty) {
       await db.batch((batch) => batch.insertAll(db.courts, toAdd));
     }
+  }
+
+  static String _ballLevelForAge(int age) {
+    if (age <= 9) return BallLevel.red.label;
+    if (age <= 11) return BallLevel.orange.label;
+    if (age <= 14) return BallLevel.green.label;
+    return BallLevel.yellow.label;
   }
 }
 

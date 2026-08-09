@@ -65,6 +65,12 @@ class Lessons extends Table {
   RealColumn get price => real().nullable()();
   TextColumn get title => text().nullable()();
   TextColumn get notes => text().nullable()();
+  /// Haftalık tekrar serisi kimliği (olası dersler).
+  TextColumn get seriesId => text().nullable()();
+  /// Özel renk (#RRGGBB). Boşsa antrenör rengi kullanılır.
+  TextColumn get colorHex => text().nullable()();
+  /// Grup dersi temsilci öğrencisi.
+  TextColumn get representativeUserId => text().nullable().references(Users, #id)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -143,7 +149,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +169,16 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(lessons, lessons.status);
             await m.addColumn(lessons, lessons.price);
           }
+          if (from < 5) {
+            await m.addColumn(lessons, lessons.seriesId);
+            await m.addColumn(lessons, lessons.colorHex);
+          }
+          if (from < 6) {
+            await m.addColumn(lessons, lessons.representativeUserId);
+          }
+          if (from < 7) {
+            await SeedData.syncAthleteBallLevelsAndEmails(this);
+          }
         },
       );
 
@@ -181,6 +197,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<User>> getAllUsers() => select(users).get();
+
+  Future<List<User>> getUsersByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value([]);
+    return (select(users)..where((u) => u.id.isIn(ids))).get();
+  }
 
   Future<List<User>> searchAthletesByName(String query, {int limit = 12}) async {
     final q = query.trim().toLowerCase();
@@ -282,6 +303,20 @@ class AppDatabase extends _$AppDatabase {
     return (select(lessons)..where((l) => l.id.equals(id))).getSingleOrNull();
   }
 
+  Future<List<Lesson>> getLessonsBySeriesId(String seriesId) {
+    return (select(lessons)
+          ..where((l) => l.seriesId.equals(seriesId))
+          ..orderBy([(l) => OrderingTerm.asc(l.startTime)]))
+        .get();
+  }
+
+  Future<void> deleteLessons(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await (delete(lessonAttendances)..where((a) => a.lessonId.isIn(ids))).go();
+    await (delete(lessonParticipants)..where((p) => p.lessonId.isIn(ids))).go();
+    await (delete(lessons)..where((l) => l.id.isIn(ids))).go();
+  }
+
   // --- Lesson Participants ---
 
   Future<List<LessonParticipant>> getParticipantsForLesson(String lessonId) {
@@ -308,6 +343,11 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<LessonAttendance>> getAttendancesForLesson(String lessonId) {
     return (select(lessonAttendances)..where((a) => a.lessonId.equals(lessonId))).get();
+  }
+
+  Future<List<LessonAttendance>> getAttendancesForLessons(List<String> lessonIds) {
+    if (lessonIds.isEmpty) return Future.value([]);
+    return (select(lessonAttendances)..where((a) => a.lessonId.isIn(lessonIds))).get();
   }
 
   Stream<List<LessonAttendance>> watchAttendancesForUser(String userId) {

@@ -1,16 +1,18 @@
-# crm_app
+# ETA Tenis Akademisi — CRM (`yuks-eta`)
 
-Flutter CRM uygulamasi
+Flutter tabanlı antrenör CRM: öğrenci yönetimi, yoklama, takvim, kort ve muhasebe.
 
-## Getting Started
+## Son iyileştirmeler
 
-This project is a starting point for a Flutter application.
+Öğrenci arama/filtre, kompakt yoklama akışı ve kontrast düzeltmeleri için görsellerle anlatım:
 
-A few resources to get you started if this is your first Flutter project:
+→ [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Çalıştırma
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```
+
+Demo antrenör girişi uygulama içindeki giriş ekranından seçilebilir.

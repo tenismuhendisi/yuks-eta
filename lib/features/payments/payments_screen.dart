@@ -40,7 +40,11 @@ class PaymentsScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  role == UserRole.athlete ? 'Ödemelerim' : 'Ödeme Takibi',
+                  role == UserRole.athlete
+                      ? 'Ödemelerim'
+                      : role == UserRole.coach
+                          ? 'Muhasebe'
+                          : 'Ödeme Takibi',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),

@@ -18,14 +18,12 @@ class LessonFormDialog extends ConsumerStatefulWidget {
     this.existingLesson,
     this.initialStart,
     this.initialEnd,
-    this.isTemplate = false,
   });
 
   final String coachId;
   final Lesson? existingLesson;
   final DateTime? initialStart;
   final DateTime? initialEnd;
-  final bool isTemplate;
 
   @override
   ConsumerState<LessonFormDialog> createState() => _LessonFormDialogState();
@@ -36,7 +34,6 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
   late DateTime _start;
   late DateTime _end;
   late int _maxParticipants;
-  late bool _isTemplate;
   String? _selectedCourtId;
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
@@ -52,7 +49,6 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
     _start = lesson?.startTime ?? widget.initialStart ?? DateTime.now();
     _end = lesson?.endTime ?? widget.initialEnd ?? _start.add(const Duration(hours: 1));
     _maxParticipants = lesson?.maxParticipants ?? 1;
-    _isTemplate = lesson?.isTemplate ?? widget.isTemplate;
     _selectedCourtId = lesson?.courtId;
     _titleController.text = lesson?.title ?? '';
     _notesController.text = lesson?.notes ?? '';
@@ -92,16 +88,16 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
       return;
     }
 
-    if (!_isTemplate && _selectedCourtId == null) {
+    if (_selectedCourtId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gerçek dersler için kort seçmelisiniz')),
+        const SnackBar(content: Text('Kort seçmelisiniz')),
       );
       return;
     }
 
     setState(() => _saving = true);
 
-    if (!_isTemplate && _selectedCourtId != null) {
+    if (_selectedCourtId != null) {
       final service = ref.read(courtAvailabilityServiceProvider);
       final available = await service.isCourtAvailable(
         _selectedCourtId!,
@@ -127,12 +123,12 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
       await db.insertLesson(LessonsCompanion.insert(
         id: lessonId,
         coachId: widget.coachId,
-        courtId: Value(_isTemplate ? null : _selectedCourtId),
+        courtId: Value(_selectedCourtId),
         type: _type.name,
         startTime: _start,
         endTime: _end,
         maxParticipants: Value(_type == LessonType.group ? _maxParticipants : _maxParticipants.clamp(1, 3)),
-        isTemplate: Value(_isTemplate),
+        isTemplate: const Value(false),
         status: Value(LessonStatus.confirmed.name),
         title: Value(_titleController.text.trim().isEmpty ? null : _titleController.text.trim()),
         notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
@@ -141,12 +137,12 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
       await db.updateLesson(
         lessonId,
         LessonsCompanion(
-          courtId: Value(_isTemplate ? null : _selectedCourtId),
+          courtId: Value(_selectedCourtId),
           type: Value(_type.name),
           startTime: Value(_start),
           endTime: Value(_end),
           maxParticipants: Value(_type == LessonType.group ? _maxParticipants : _maxParticipants.clamp(1, 3)),
-          isTemplate: Value(_isTemplate),
+          isTemplate: const Value(false),
           status: Value(LessonStatus.confirmed.name),
           title: Value(_titleController.text.trim().isEmpty ? null : _titleController.text.trim()),
           notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
@@ -219,13 +215,6 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
                 },
               ),
               const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Şablon ders'),
-                subtitle: const Text('Hayali planlama, kort rezerve etmez'),
-                value: _isTemplate,
-                onChanged: (v) => setState(() => _isTemplate = v),
-              ),
               TextField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Başlık (opsiyonel)'),
@@ -275,23 +264,21 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
                   controller: TextEditingController(text: '$_maxParticipants'),
                   onChanged: (v) => _maxParticipants = int.tryParse(v) ?? 10,
                 ),
-              if (!_isTemplate) ...[
-                const SizedBox(height: 8),
-                FutureBuilder(
-                  future: courtsAsync,
-                  builder: (context, snapshot) {
-                    final courts = snapshot.data ?? [];
-                    return DropdownButtonFormField<String>(
-                      value: _selectedCourtId,
-                      decoration: const InputDecoration(labelText: 'Kort'),
-                      items: courts
-                          .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _selectedCourtId = v),
-                    );
-                  },
-                ),
-              ],
+              const SizedBox(height: 8),
+              FutureBuilder(
+                future: courtsAsync,
+                builder: (context, snapshot) {
+                  final courts = snapshot.data ?? [];
+                  return DropdownButtonFormField<String>(
+                    value: _selectedCourtId,
+                    decoration: const InputDecoration(labelText: 'Kort'),
+                    items: courts
+                        .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedCourtId = v),
+                  );
+                },
+              ),
               const SizedBox(height: 8),
               Text('Katılımcılar', style: Theme.of(context).textTheme.titleSmall),
               if (_myStudents.isEmpty)
@@ -328,9 +315,7 @@ class _LessonFormDialogState extends ConsumerState<LessonFormDialog> {
         ),
       ),
       actions: [
-        if (widget.existingLesson != null &&
-            !widget.existingLesson!.isTemplate &&
-            widget.existingLesson!.type == 'group')
+        if (widget.existingLesson != null && widget.existingLesson!.type == 'group')
           TextButton(
             onPressed: () async {
               await showDialog<bool>(

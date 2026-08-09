@@ -1439,6 +1439,28 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
       'notes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _seriesIdMeta =
+      const VerificationMeta('seriesId');
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+      'series_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _colorHexMeta =
+      const VerificationMeta('colorHex');
+  @override
+  late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
+      'color_hex', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _representativeUserIdMeta =
+      const VerificationMeta('representativeUserId');
+  @override
+  late final GeneratedColumn<String> representativeUserId =
+      GeneratedColumn<String>(
+          'representative_user_id', aliasedName, true,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultConstraints:
+              GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1452,7 +1474,10 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
         status,
         price,
         title,
-        notes
+        notes,
+        seriesId,
+        colorHex,
+        representativeUserId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1525,6 +1550,20 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('series_id')) {
+      context.handle(_seriesIdMeta,
+          seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta));
+    }
+    if (data.containsKey('color_hex')) {
+      context.handle(_colorHexMeta,
+          colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta));
+    }
+    if (data.containsKey('representative_user_id')) {
+      context.handle(
+          _representativeUserIdMeta,
+          representativeUserId.isAcceptableOrUnknown(
+              data['representative_user_id']!, _representativeUserIdMeta));
+    }
     return context;
   }
 
@@ -1558,6 +1597,13 @@ class $LessonsTable extends Lessons with TableInfo<$LessonsTable, Lesson> {
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      seriesId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}series_id']),
+      colorHex: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}color_hex']),
+      representativeUserId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}representative_user_id']),
     );
   }
 
@@ -1582,6 +1628,15 @@ class Lesson extends DataClass implements Insertable<Lesson> {
   final double? price;
   final String? title;
   final String? notes;
+
+  /// Haftalık tekrar serisi kimliği (olası dersler).
+  final String? seriesId;
+
+  /// Özel renk (#RRGGBB). Boşsa antrenör rengi kullanılır.
+  final String? colorHex;
+
+  /// Grup dersi temsilci öğrencisi.
+  final String? representativeUserId;
   const Lesson(
       {required this.id,
       required this.coachId,
@@ -1594,7 +1649,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       required this.status,
       this.price,
       this.title,
-      this.notes});
+      this.notes,
+      this.seriesId,
+      this.colorHex,
+      this.representativeUserId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1618,6 +1676,15 @@ class Lesson extends DataClass implements Insertable<Lesson> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || seriesId != null) {
+      map['series_id'] = Variable<String>(seriesId);
+    }
+    if (!nullToAbsent || colorHex != null) {
+      map['color_hex'] = Variable<String>(colorHex);
+    }
+    if (!nullToAbsent || representativeUserId != null) {
+      map['representative_user_id'] = Variable<String>(representativeUserId);
+    }
     return map;
   }
 
@@ -1640,6 +1707,15 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           title == null && nullToAbsent ? const Value.absent() : Value(title),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      seriesId: seriesId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesId),
+      colorHex: colorHex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(colorHex),
+      representativeUserId: representativeUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(representativeUserId),
     );
   }
 
@@ -1659,6 +1735,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       price: serializer.fromJson<double?>(json['price']),
       title: serializer.fromJson<String?>(json['title']),
       notes: serializer.fromJson<String?>(json['notes']),
+      seriesId: serializer.fromJson<String?>(json['seriesId']),
+      colorHex: serializer.fromJson<String?>(json['colorHex']),
+      representativeUserId:
+          serializer.fromJson<String?>(json['representativeUserId']),
     );
   }
   @override
@@ -1677,6 +1757,9 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       'price': serializer.toJson<double?>(price),
       'title': serializer.toJson<String?>(title),
       'notes': serializer.toJson<String?>(notes),
+      'seriesId': serializer.toJson<String?>(seriesId),
+      'colorHex': serializer.toJson<String?>(colorHex),
+      'representativeUserId': serializer.toJson<String?>(representativeUserId),
     };
   }
 
@@ -1692,7 +1775,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           String? status,
           Value<double?> price = const Value.absent(),
           Value<String?> title = const Value.absent(),
-          Value<String?> notes = const Value.absent()}) =>
+          Value<String?> notes = const Value.absent(),
+          Value<String?> seriesId = const Value.absent(),
+          Value<String?> colorHex = const Value.absent(),
+          Value<String?> representativeUserId = const Value.absent()}) =>
       Lesson(
         id: id ?? this.id,
         coachId: coachId ?? this.coachId,
@@ -1706,6 +1792,11 @@ class Lesson extends DataClass implements Insertable<Lesson> {
         price: price.present ? price.value : this.price,
         title: title.present ? title.value : this.title,
         notes: notes.present ? notes.value : this.notes,
+        seriesId: seriesId.present ? seriesId.value : this.seriesId,
+        colorHex: colorHex.present ? colorHex.value : this.colorHex,
+        representativeUserId: representativeUserId.present
+            ? representativeUserId.value
+            : this.representativeUserId,
       );
   Lesson copyWithCompanion(LessonsCompanion data) {
     return Lesson(
@@ -1724,6 +1815,11 @@ class Lesson extends DataClass implements Insertable<Lesson> {
       price: data.price.present ? data.price.value : this.price,
       title: data.title.present ? data.title.value : this.title,
       notes: data.notes.present ? data.notes.value : this.notes,
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      representativeUserId: data.representativeUserId.present
+          ? data.representativeUserId.value
+          : this.representativeUserId,
     );
   }
 
@@ -1741,14 +1837,31 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           ..write('status: $status, ')
           ..write('price: $price, ')
           ..write('title: $title, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('representativeUserId: $representativeUserId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, coachId, courtId, type, startTime,
-      endTime, maxParticipants, isTemplate, status, price, title, notes);
+  int get hashCode => Object.hash(
+      id,
+      coachId,
+      courtId,
+      type,
+      startTime,
+      endTime,
+      maxParticipants,
+      isTemplate,
+      status,
+      price,
+      title,
+      notes,
+      seriesId,
+      colorHex,
+      representativeUserId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1764,7 +1877,10 @@ class Lesson extends DataClass implements Insertable<Lesson> {
           other.status == this.status &&
           other.price == this.price &&
           other.title == this.title &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.seriesId == this.seriesId &&
+          other.colorHex == this.colorHex &&
+          other.representativeUserId == this.representativeUserId);
 }
 
 class LessonsCompanion extends UpdateCompanion<Lesson> {
@@ -1780,6 +1896,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
   final Value<double?> price;
   final Value<String?> title;
   final Value<String?> notes;
+  final Value<String?> seriesId;
+  final Value<String?> colorHex;
+  final Value<String?> representativeUserId;
   final Value<int> rowid;
   const LessonsCompanion({
     this.id = const Value.absent(),
@@ -1794,6 +1913,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     this.price = const Value.absent(),
     this.title = const Value.absent(),
     this.notes = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.representativeUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LessonsCompanion.insert({
@@ -1809,6 +1931,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     this.price = const Value.absent(),
     this.title = const Value.absent(),
     this.notes = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.representativeUserId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         coachId = Value(coachId),
@@ -1828,6 +1953,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     Expression<double>? price,
     Expression<String>? title,
     Expression<String>? notes,
+    Expression<String>? seriesId,
+    Expression<String>? colorHex,
+    Expression<String>? representativeUserId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1843,6 +1971,10 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
       if (price != null) 'price': price,
       if (title != null) 'title': title,
       if (notes != null) 'notes': notes,
+      if (seriesId != null) 'series_id': seriesId,
+      if (colorHex != null) 'color_hex': colorHex,
+      if (representativeUserId != null)
+        'representative_user_id': representativeUserId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1860,6 +1992,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
       Value<double?>? price,
       Value<String?>? title,
       Value<String?>? notes,
+      Value<String?>? seriesId,
+      Value<String?>? colorHex,
+      Value<String?>? representativeUserId,
       Value<int>? rowid}) {
     return LessonsCompanion(
       id: id ?? this.id,
@@ -1874,6 +2009,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
       price: price ?? this.price,
       title: title ?? this.title,
       notes: notes ?? this.notes,
+      seriesId: seriesId ?? this.seriesId,
+      colorHex: colorHex ?? this.colorHex,
+      representativeUserId: representativeUserId ?? this.representativeUserId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1917,6 +2055,16 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (colorHex.present) {
+      map['color_hex'] = Variable<String>(colorHex.value);
+    }
+    if (representativeUserId.present) {
+      map['representative_user_id'] =
+          Variable<String>(representativeUserId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1938,6 +2086,9 @@ class LessonsCompanion extends UpdateCompanion<Lesson> {
           ..write('price: $price, ')
           ..write('title: $title, ')
           ..write('notes: $notes, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('representativeUserId: $representativeUserId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3687,20 +3838,6 @@ final class $$UsersTableReferences
         manager.$state.copyWith(prefetchedData: cache));
   }
 
-  static MultiTypedResultKey<$LessonsTable, List<Lesson>> _lessonsRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.lessons,
-          aliasName: $_aliasNameGenerator(db.users.id, db.lessons.coachId));
-
-  $$LessonsTableProcessedTableManager get lessonsRefs {
-    final manager = $$LessonsTableTableManager($_db, $_db.lessons)
-        .filter((f) => f.coachId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_lessonsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
   static MultiTypedResultKey<$LessonParticipantsTable, List<LessonParticipant>>
       _lessonParticipantsRefsTable(_$AppDatabase db) =>
           MultiTypedResultKey.fromTable(db.lessonParticipants,
@@ -3782,27 +3919,6 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
             $$CourtRentalsTableFilterComposer(
               $db: $db,
               $table: $db.courtRentals,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> lessonsRefs(
-      Expression<bool> Function($$LessonsTableFilterComposer f) f) {
-    final $$LessonsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.lessons,
-        getReferencedColumn: (t) => t.coachId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$LessonsTableFilterComposer(
-              $db: $db,
-              $table: $db.lessons,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -3936,27 +4052,6 @@ class $$UsersTableAnnotationComposer
     return f(composer);
   }
 
-  Expression<T> lessonsRefs<T extends Object>(
-      Expression<T> Function($$LessonsTableAnnotationComposer a) f) {
-    final $$LessonsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.lessons,
-        getReferencedColumn: (t) => t.coachId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$LessonsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.lessons,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
   Expression<T> lessonParticipantsRefs<T extends Object>(
       Expression<T> Function($$LessonParticipantsTableAnnotationComposer a) f) {
     final $$LessonParticipantsTableAnnotationComposer composer =
@@ -3994,7 +4089,6 @@ class $$UsersTableTableManager extends RootTableManager<
     PrefetchHooks Function(
         {bool courtBlocksRefs,
         bool courtRentalsRefs,
-        bool lessonsRefs,
         bool lessonParticipantsRefs})> {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
       : super(TableManagerState(
@@ -4053,14 +4147,12 @@ class $$UsersTableTableManager extends RootTableManager<
           prefetchHooksCallback: (
               {courtBlocksRefs = false,
               courtRentalsRefs = false,
-              lessonsRefs = false,
               lessonParticipantsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (courtBlocksRefs) db.courtBlocks,
                 if (courtRentalsRefs) db.courtRentals,
-                if (lessonsRefs) db.lessons,
                 if (lessonParticipantsRefs) db.lessonParticipants
               ],
               addJoins: null,
@@ -4089,17 +4181,6 @@ class $$UsersTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.athleteId == item.id),
-                        typedResults: items),
-                  if (lessonsRefs)
-                    await $_getPrefetchedData<User, $UsersTable, Lesson>(
-                        currentTable: table,
-                        referencedTable:
-                            $$UsersTableReferences._lessonsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$UsersTableReferences(db, table, p0).lessonsRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.coachId == item.id),
                         typedResults: items),
                   if (lessonParticipantsRefs)
                     await $_getPrefetchedData<User, $UsersTable,
@@ -4135,7 +4216,6 @@ typedef $$UsersTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function(
         {bool courtBlocksRefs,
         bool courtRentalsRefs,
-        bool lessonsRefs,
         bool lessonParticipantsRefs})>;
 typedef $$CourtsTableCreateCompanionBuilder = CourtsCompanion Function({
   required String id,
@@ -5259,6 +5339,9 @@ typedef $$LessonsTableCreateCompanionBuilder = LessonsCompanion Function({
   Value<double?> price,
   Value<String?> title,
   Value<String?> notes,
+  Value<String?> seriesId,
+  Value<String?> colorHex,
+  Value<String?> representativeUserId,
   Value<int> rowid,
 });
 typedef $$LessonsTableUpdateCompanionBuilder = LessonsCompanion Function({
@@ -5274,6 +5357,9 @@ typedef $$LessonsTableUpdateCompanionBuilder = LessonsCompanion Function({
   Value<double?> price,
   Value<String?> title,
   Value<String?> notes,
+  Value<String?> seriesId,
+  Value<String?> colorHex,
+  Value<String?> representativeUserId,
   Value<int> rowid,
 });
 
@@ -5304,6 +5390,22 @@ final class $$LessonsTableReferences
     final manager = $$CourtsTableTableManager($_db, $_db.courts)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_courtIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _representativeUserIdTable(_$AppDatabase db) =>
+      db.users.createAlias(
+          $_aliasNameGenerator(db.lessons.representativeUserId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get representativeUserId {
+    final $_column = $_itemColumn<String>('representative_user_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item =
+        $_typedResult.readTableOrNull(_representativeUserIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: [item]));
@@ -5384,6 +5486,12 @@ class $$LessonsTableFilterComposer
   ColumnFilters<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get seriesId => $composableBuilder(
+      column: $table.seriesId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get colorHex => $composableBuilder(
+      column: $table.colorHex, builder: (column) => ColumnFilters(column));
+
   $$UsersTableFilterComposer get coachId {
     final $$UsersTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -5416,6 +5524,26 @@ class $$LessonsTableFilterComposer
             $$CourtsTableFilterComposer(
               $db: $db,
               $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get representativeUserId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.representativeUserId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5507,6 +5635,12 @@ class $$LessonsTableOrderingComposer
   ColumnOrderings<String> get notes => $composableBuilder(
       column: $table.notes, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get seriesId => $composableBuilder(
+      column: $table.seriesId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get colorHex => $composableBuilder(
+      column: $table.colorHex, builder: (column) => ColumnOrderings(column));
+
   $$UsersTableOrderingComposer get coachId {
     final $$UsersTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5539,6 +5673,26 @@ class $$LessonsTableOrderingComposer
             $$CourtsTableOrderingComposer(
               $db: $db,
               $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get representativeUserId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.representativeUserId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5587,6 +5741,12 @@ class $$LessonsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumn<String> get seriesId =>
+      $composableBuilder(column: $table.seriesId, builder: (column) => column);
+
+  GeneratedColumn<String> get colorHex =>
+      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
   $$UsersTableAnnotationComposer get coachId {
     final $$UsersTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -5619,6 +5779,26 @@ class $$LessonsTableAnnotationComposer
             $$CourtsTableAnnotationComposer(
               $db: $db,
               $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get representativeUserId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.representativeUserId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5686,6 +5866,7 @@ class $$LessonsTableTableManager extends RootTableManager<
     PrefetchHooks Function(
         {bool coachId,
         bool courtId,
+        bool representativeUserId,
         bool lessonParticipantsRefs,
         bool lessonAttendancesRefs})> {
   $$LessonsTableTableManager(_$AppDatabase db, $LessonsTable table)
@@ -5711,6 +5892,9 @@ class $$LessonsTableTableManager extends RootTableManager<
             Value<double?> price = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> seriesId = const Value.absent(),
+            Value<String?> colorHex = const Value.absent(),
+            Value<String?> representativeUserId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LessonsCompanion(
@@ -5726,6 +5910,9 @@ class $$LessonsTableTableManager extends RootTableManager<
             price: price,
             title: title,
             notes: notes,
+            seriesId: seriesId,
+            colorHex: colorHex,
+            representativeUserId: representativeUserId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5741,6 +5928,9 @@ class $$LessonsTableTableManager extends RootTableManager<
             Value<double?> price = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> seriesId = const Value.absent(),
+            Value<String?> colorHex = const Value.absent(),
+            Value<String?> representativeUserId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LessonsCompanion.insert(
@@ -5756,6 +5946,9 @@ class $$LessonsTableTableManager extends RootTableManager<
             price: price,
             title: title,
             notes: notes,
+            seriesId: seriesId,
+            colorHex: colorHex,
+            representativeUserId: representativeUserId,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -5765,6 +5958,7 @@ class $$LessonsTableTableManager extends RootTableManager<
           prefetchHooksCallback: (
               {coachId = false,
               courtId = false,
+              representativeUserId = false,
               lessonParticipantsRefs = false,
               lessonAttendancesRefs = false}) {
             return PrefetchHooks(
@@ -5802,6 +5996,17 @@ class $$LessonsTableTableManager extends RootTableManager<
                     referencedTable: $$LessonsTableReferences._courtIdTable(db),
                     referencedColumn:
                         $$LessonsTableReferences._courtIdTable(db).id,
+                  ) as T;
+                }
+                if (representativeUserId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.representativeUserId,
+                    referencedTable:
+                        $$LessonsTableReferences._representativeUserIdTable(db),
+                    referencedColumn: $$LessonsTableReferences
+                        ._representativeUserIdTable(db)
+                        .id,
                   ) as T;
                 }
 
@@ -5856,6 +6061,7 @@ typedef $$LessonsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function(
         {bool coachId,
         bool courtId,
+        bool representativeUserId,
         bool lessonParticipantsRefs,
         bool lessonAttendancesRefs})>;
 typedef $$LessonParticipantsTableCreateCompanionBuilder

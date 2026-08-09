@@ -20,7 +20,25 @@ abstract final class CoachColors {
     Color(0xFF37474F),
   ];
 
-  static Color forCoach(String? coachId) {
+  /// Olası dersler için seçilebilir renkler.
+  static const List<Color> tentativePalette = [
+    Color(0xFF1565C0),
+    Color(0xFF00838F),
+    Color(0xFF2E7D32),
+    Color(0xFFEF6C00),
+    Color(0xFFC62828),
+    Color(0xFF6A1B9A),
+    Color(0xFF4527A0),
+    Color(0xFFAD1457),
+    Color(0xFF558B2F),
+    Color(0xFF5D4037),
+    Color(0xFF455A64),
+    Color(0xFFF9A825),
+  ];
+
+  static Color forCoach(String? coachId, {String? colorHex}) {
+    final custom = parseHex(colorHex);
+    if (custom != null) return custom;
     if (coachId == null || coachId.isEmpty) {
       return const Color(0xFF546E7A);
     }
@@ -29,20 +47,43 @@ abstract final class CoachColors {
     return _fallbackPalette[coachId.hashCode.abs() % _fallbackPalette.length];
   }
 
-  /// Ortak dolgu (grup ve özel aynı).
-  static Color fill(String? coachId) =>
-      Color.lerp(forCoach(coachId), Colors.white, 0.55)!;
-
-  /// Grup: kalın koyu çerçeve. Özel: ince aynı renk.
-  static Color border(String? coachId, {required bool isGroup}) {
-    final base = forCoach(coachId);
-    return isGroup ? Color.lerp(base, Colors.black, 0.5)! : base.withValues(alpha: 0.55);
+  /// Soft dolgu — tip ayrımı çerçeve/koyulukla değil sol şerit ile yapılır.
+  static Color fill(String? coachId, {String? colorHex, bool isGroup = false}) {
+    final base = forCoach(coachId, colorHex: colorHex);
+    return Color.lerp(base, Colors.white, 0.72)!;
   }
 
-  static double borderWidth({required bool isGroup}) => isGroup ? 3.0 : 1.0;
+  /// İnce marka kenarlığı (eski kalın grup çerçevesi yerine).
+  static Color border(String? coachId, {required bool isGroup, String? colorHex}) {
+    final base = forCoach(coachId, colorHex: colorHex);
+    return base.withValues(alpha: isGroup ? 0.22 : 0.12);
+  }
 
-  static Color onFill(String? coachId) {
-    final bg = fill(coachId);
+  static double borderWidth({required bool isGroup}) => 1.0;
+
+  static BorderRadius slotRadius({bool compact = false}) =>
+      BorderRadius.circular(compact ? 8 : 10);
+
+  static Color onFill(String? coachId, {String? colorHex, bool isGroup = false}) {
+    final bg = fill(coachId, colorHex: colorHex);
     return bg.computeLuminance() > 0.45 ? const Color(0xFF0B1C2C) : Colors.white;
+  }
+
+  static String toHex(Color color) {
+    final r = (color.r * 255).round().toRadixString(16).padLeft(2, '0');
+    final g = (color.g * 255).round().toRadixString(16).padLeft(2, '0');
+    final b = (color.b * 255).round().toRadixString(16).padLeft(2, '0');
+    return '#$r$g$b'.toUpperCase();
+  }
+
+  static Color? parseHex(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    var h = hex.trim();
+    if (h.startsWith('#')) h = h.substring(1);
+    if (h.length == 6) h = 'FF$h';
+    if (h.length != 8) return null;
+    final value = int.tryParse(h, radix: 16);
+    if (value == null) return null;
+    return Color(value);
   }
 }

@@ -26,6 +26,9 @@ class _TakeAttendanceDialogState extends ConsumerState<TakeAttendanceDialog> {
   bool _loading = true;
   bool _saving = false;
 
+  static bool _isOther(AttendanceStatus s) =>
+      s == AttendanceStatus.late || s == AttendanceStatus.excused;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +59,34 @@ class _TakeAttendanceDialogState extends ConsumerState<TakeAttendanceDialog> {
     });
   }
 
+  Future<void> _pickOther(String userId) async {
+    final picked = await showDialog<AttendanceStatus>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Diğer'),
+        children: [
+          for (final s in const [AttendanceStatus.late, AttendanceStatus.excused])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, s),
+              child: Row(
+                children: [
+                  Icon(
+                    s == AttendanceStatus.late ? Icons.schedule : Icons.event_busy,
+                    size: 20,
+                    color: Colors.grey.shade700,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(s.label, style: const TextStyle(fontSize: 16)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _statusByUser[userId] = picked);
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     await ref.read(databaseProvider).saveLessonAttendances(
@@ -67,6 +98,38 @@ class _TakeAttendanceDialogState extends ConsumerState<TakeAttendanceDialog> {
         );
     if (!mounted) return;
     Navigator.pop(context, true);
+  }
+
+  Widget _statusRow(String userId, AttendanceStatus status) {
+    final other = _isOther(status);
+    return Row(
+      children: [
+        Expanded(
+          child: _StatusChip(
+            label: AttendanceStatus.present.label,
+            selected: status == AttendanceStatus.present,
+            selectedColor: AppColors.lime.withValues(alpha: 0.55),
+            onTap: () => setState(() => _statusByUser[userId] = AttendanceStatus.present),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatusChip(
+            label: AttendanceStatus.absent.label,
+            selected: status == AttendanceStatus.absent,
+            onTap: () => setState(() => _statusByUser[userId] = AttendanceStatus.absent),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatusChip(
+            label: other ? status.label : 'Diğer',
+            selected: other,
+            onTap: () => _pickOther(userId),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -106,56 +169,45 @@ class _TakeAttendanceDialogState extends ConsumerState<TakeAttendanceDialog> {
                           'Her sporcu için durum seçin (${_users.length} kişi)',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         ..._users.entries.map((e) {
                           final status = _statusByUser[e.key]!;
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 10),
+                            margin: const EdgeInsets.only(bottom: 8),
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
                                       CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor: AppColors.lime.withValues(alpha: 0.35),
+                                        radius: 14,
+                                        backgroundColor:
+                                            AppColors.lime.withValues(alpha: 0.35),
                                         child: Text(
                                           e.value.name.characters.first,
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w700,
+                                            fontSize: 13,
                                             color: AppColors.navy,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           e.value.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    children: AttendanceStatus.values.map((s) {
-                                      final selected = status == s;
-                                      return ChoiceChip(
-                                        label: Text(s.label, style: const TextStyle(fontSize: 12)),
-                                        selected: selected,
-                                        selectedColor: s == AttendanceStatus.present
-                                            ? AppColors.lime.withValues(alpha: 0.55)
-                                            : null,
-                                        onSelected: (_) =>
-                                            setState(() => _statusByUser[e.key] = s),
-                                        visualDensity: VisualDensity.compact,
-                                      );
-                                    }).toList(),
-                                  ),
+                                  const SizedBox(height: 6),
+                                  _statusRow(e.key, status),
                                 ],
                               ),
                             ),
@@ -181,6 +233,64 @@ class _TakeAttendanceDialogState extends ConsumerState<TakeAttendanceDialog> {
               : const Text('Kaydet'),
         ),
       ],
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.selectedColor,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? selectedColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? (selectedColor ?? Theme.of(context).colorScheme.secondaryContainer)
+          : Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: selected
+              ? Colors.transparent
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (selected) ...[
+                const Icon(Icons.check, size: 14),
+                const SizedBox(width: 2),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

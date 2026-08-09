@@ -33,6 +33,26 @@ class CourtManagementScreen extends ConsumerStatefulWidget {
 class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
   DateTime _selectedDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   _CourtViewMode _mode = _CourtViewMode.day;
+  late Set<String> _expandedBlocks;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandedBlocks = {
+      for (final b in AppConstants.calendarTimeBlocks)
+        if (b.courtExpandedByDefault) b.id,
+    };
+  }
+
+  void _toggleBlock(String id) {
+    setState(() {
+      if (_expandedBlocks.contains(id)) {
+        _expandedBlocks.remove(id);
+      } else {
+        _expandedBlocks.add(id);
+      }
+    });
+  }
 
   DateTime get _weekMonday {
     return _selectedDay.subtract(Duration(days: _selectedDay.weekday - DateTime.monday));
@@ -177,8 +197,18 @@ class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
               return RefreshIndicator(
                 onRefresh: _refresh,
                 child: isWeek
-                    ? _WeekCourtGrid(slots: slots, onSlotTap: _onSlotTap)
-                    : _DayCourtGrid(slots: slots, onSlotTap: _onSlotTap),
+                    ? _WeekCourtGrid(
+                        slots: slots,
+                        onSlotTap: _onSlotTap,
+                        expandedBlocks: _expandedBlocks,
+                        onToggleBlock: _toggleBlock,
+                      )
+                    : _DayCourtGrid(
+                        slots: slots,
+                        onSlotTap: _onSlotTap,
+                        expandedBlocks: _expandedBlocks,
+                        onToggleBlock: _toggleBlock,
+                      ),
               );
             },
           ),
@@ -247,154 +277,306 @@ ScrollConfiguration _scrollConfig(BuildContext context, {required Widget child})
   );
 }
 
-/// Günlük: satır=saat, sütun=kort.
+/// İki scroll görünümünü senkron tutar (sticky eksenler için).
+class _ScrollPair {
+  _ScrollPair() {
+    a.addListener(_fromA);
+    b.addListener(_fromB);
+  }
+
+  final ScrollController a = ScrollController();
+  final ScrollController b = ScrollController();
+  bool _locking = false;
+
+  void _fromA() => _sync(a, b);
+  void _fromB() => _sync(b, a);
+
+  void _sync(ScrollController from, ScrollController to) {
+    if (_locking || !from.hasClients || !to.hasClients) return;
+    final target = from.offset.clamp(0.0, to.position.maxScrollExtent);
+    if ((to.offset - target).abs() < 0.5) return;
+    _locking = true;
+    to.jumpTo(target);
+    _locking = false;
+  }
+
+  void dispose() {
+    a.removeListener(_fromA);
+    b.removeListener(_fromB);
+    a.dispose();
+    b.dispose();
+  }
+}
+
+/// Günlük: satır=saat, sütun=kort. Blok başlıkları tam genişlik.
 class _DayCourtGrid extends StatefulWidget {
-  const _DayCourtGrid({required this.slots, required this.onSlotTap});
+  const _DayCourtGrid({
+    required this.slots,
+    required this.onSlotTap,
+    required this.expandedBlocks,
+    required this.onToggleBlock,
+  });
 
   final List<CourtSlot> slots;
   final Future<void> Function(CourtSlot slot) onSlotTap;
+  final Set<String> expandedBlocks;
+  final void Function(String blockId) onToggleBlock;
 
   @override
   State<_DayCourtGrid> createState() => _DayCourtGridState();
 }
 
 class _DayCourtGridState extends State<_DayCourtGrid> {
-  static const _timeColWidth = 44.0;
+  static const _timeColWidth = 48.0;
   static const _minCourtColWidth = 88.0;
   static const _rowHeight = 56.0;
-  static const _headerHeight = 36.0;
+  static const _headerHeight = 40.0;
+  static const _blockHeaderHeight = 34.0;
 
-  final _hController = ScrollController();
-  final _vController = ScrollController();
+  final _h = _ScrollPair();
+  final _v = _ScrollPair();
 
   @override
   void dispose() {
-    _hController.dispose();
-    _vController.dispose();
+    _h.dispose();
+    _v.dispose();
     super.dispose();
+  }
+
+  int _busyCountInBlock(CalendarTimeBlock block, Map<String, CourtSlot> byKey, List<String> courts) {
+    var count = 0;
+    for (final hour in block.hours) {
+      for (final court in courts) {
+        final slot = byKey['$court|$hour'];
+        if (slot != null && slot.status != SlotStatus.available) count++;
+      }
+    }
+    return count;
   }
 
   @override
   Widget build(BuildContext context) {
     final courtNames = <String>[];
-    final hours = <int>[];
+    final hourSet = <int>{};
     final byKey = <String, CourtSlot>{};
 
     for (final slot in widget.slots) {
       if (!courtNames.contains(slot.courtName)) courtNames.add(slot.courtName);
-      if (!hours.contains(slot.startTime.hour)) hours.add(slot.startTime.hour);
+      hourSet.add(slot.startTime.hour);
       byKey['${slot.courtName}|${slot.startTime.hour}'] = slot;
     }
-    hours.sort();
 
     final theme = Theme.of(context);
     final courtCount = math.max(courtNames.length, 1);
+    final headerStyle = theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold);
+    final timeStyle = theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600);
 
     return _scrollConfig(
       context,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final available = constraints.maxWidth;
-          final minTable = _timeColWidth + courtCount * _minCourtColWidth;
-          final courtColWidth = available >= minTable
-              ? (available - _timeColWidth) / courtCount
+          final available = math.max(constraints.maxWidth - _timeColWidth, 0.0);
+          final courtColWidth = available >= courtCount * _minCourtColWidth
+              ? available / courtCount
               : _minCourtColWidth;
-          final contentWidth = _timeColWidth + courtCount * courtColWidth;
+          final bodyWidth = courtCount * courtColWidth;
 
-          return ClipRect(
-            child: Scrollbar(
-              controller: _hController,
-              thumbVisibility: available < contentWidth - 0.5,
-              notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
-              child: SingleChildScrollView(
-                controller: _hController,
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: contentWidth,
-                  child: Scrollbar(
-                    controller: _vController,
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      controller: _vController,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: _headerHeight,
-                            width: contentWidth,
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: _timeColWidth,
-                                  child: Text(
-                                    'Saat',
-                                    style: theme.textTheme.labelMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                ...courtNames.map(
-                                  (name) => SizedBox(
-                                    width: courtColWidth,
-                                    child: Text(
-                                      name,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1),
-                          ...hours.map((hour) {
-                            return SizedBox(
-                              height: _rowHeight,
-                              width: contentWidth,
-                              child: Row(
-                                children: [
-                                  SizedBox(
-                                    width: _timeColWidth,
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        '${hour.toString().padLeft(2, '0')}:00',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  ...courtNames.map((name) {
-                                    final slot = byKey['$name|$hour']!;
-                                    return SizedBox(
-                                      width: courtColWidth,
-                                      height: _rowHeight,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(2),
-                                        child: CourtSlotCell(
-                                          slot: slot,
-                                          onTap: () => widget.onSlotTap(slot),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
+          var bodyHeight = 12.0;
+          for (final block in AppConstants.calendarTimeBlocks) {
+            bodyHeight += _blockHeaderHeight;
+            if (widget.expandedBlocks.contains(block.id)) {
+              bodyHeight += block.hours.where(hourSet.contains).length * _rowHeight;
+            }
+          }
+
+          Widget leftBody() {
+            return Column(
+              children: [
+                for (final block in AppConstants.calendarTimeBlocks) ...[
+                  SizedBox(
+                    height: _blockHeaderHeight,
+                    width: _timeColWidth,
+                    child: Material(
+                      color: widget.expandedBlocks.contains(block.id)
+                          ? Colors.grey.shade200
+                          : const Color(0xFFEEF1EF),
+                      child: InkWell(
+                        onTap: () => widget.onToggleBlock(block.id),
+                        child: Icon(
+                          widget.expandedBlocks.contains(block.id)
+                              ? Icons.expand_more
+                              : Icons.chevron_right,
+                          size: 18,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ),
+                  if (widget.expandedBlocks.contains(block.id))
+                    for (final hour in block.hours.where(hourSet.contains))
+                      SizedBox(
+                        height: _rowHeight,
+                        width: _timeColWidth,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Text(
+                              '${hour.toString().padLeft(2, '0')}:00',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: timeStyle,
+                            ),
+                          ),
+                        ),
+                      ),
+                ],
+                const SizedBox(height: 12),
+              ],
+            );
+          }
+
+          Widget rightBody() {
+            return Column(
+              children: [
+                for (final block in AppConstants.calendarTimeBlocks) ...[
+                  SizedBox(
+                    height: _blockHeaderHeight,
+                    width: bodyWidth,
+                    child: _CourtBlockHeader(
+                      block: block,
+                      expanded: widget.expandedBlocks.contains(block.id),
+                      hiddenCount: widget.expandedBlocks.contains(block.id)
+                          ? 0
+                          : _busyCountInBlock(block, byKey, courtNames),
+                      onTap: () => widget.onToggleBlock(block.id),
+                    ),
+                  ),
+                  if (widget.expandedBlocks.contains(block.id))
+                    for (final hour in block.hours.where(hourSet.contains))
+                      SizedBox(
+                        height: _rowHeight,
+                        width: bodyWidth,
+                        child: Row(
+                          children: [
+                            for (final name in courtNames)
+                              SizedBox(
+                                width: courtColWidth,
+                                height: _rowHeight,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: CourtSlotCell(
+                                    slot: byKey['$name|$hour']!,
+                                    onTap: () => widget.onSlotTap(byKey['$name|$hour']!),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                ],
+                const SizedBox(height: 12),
+              ],
+            );
+          }
+
+          return Column(
+            children: [
+              SizedBox(
+                height: _headerHeight,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: _timeColWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text('Saat', style: headerStyle),
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: _h.a,
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: bodyWidth,
+                          height: _headerHeight,
+                          child: ColoredBox(
+                            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                            child: Row(
+                              children: [
+                                for (final name in courtNames)
+                                  SizedBox(
+                                    width: courtColWidth,
+                                    child: Center(
+                                      child: Text(
+                                        name,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: headerStyle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              const Divider(height: 1),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: _timeColWidth,
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          controller: _v.a,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: SizedBox(
+                            width: _timeColWidth,
+                            height: bodyHeight,
+                            child: leftBody(),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Scrollbar(
+                        controller: _h.b,
+                        thumbVisibility: bodyWidth > available + 0.5,
+                        notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
+                        child: SingleChildScrollView(
+                          controller: _h.b,
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: bodyWidth,
+                            child: Scrollbar(
+                              controller: _v.b,
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                controller: _v.b,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: SizedBox(
+                                  width: bodyWidth,
+                                  height: bodyHeight,
+                                  child: rightBody(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -402,32 +584,56 @@ class _DayCourtGridState extends State<_DayCourtGrid> {
   }
 }
 
-/// Haftalık: sütun=saat, ana satır=gün, alt satır=kort (hafif hücreler).
+class _WeekCol {
+  const _WeekCol.hour(this.hour)
+      : blocks = const [],
+        isCollapsedBlock = false;
+  const _WeekCol.collapsedBundle(this.blocks)
+      : hour = null,
+        isCollapsedBlock = true;
+
+  final int? hour;
+  final List<CalendarTimeBlock> blocks;
+  final bool isCollapsedBlock;
+}
+
+/// Haftalık: saatler sütun. Gizli blok = dar sütun, açık blok = saat sütunları.
 class _WeekCourtGrid extends StatefulWidget {
-  const _WeekCourtGrid({required this.slots, required this.onSlotTap});
+  const _WeekCourtGrid({
+    required this.slots,
+    required this.onSlotTap,
+    required this.expandedBlocks,
+    required this.onToggleBlock,
+  });
 
   final List<CourtSlot> slots;
   final Future<void> Function(CourtSlot slot) onSlotTap;
+  final Set<String> expandedBlocks;
+  final void Function(String blockId) onToggleBlock;
 
   @override
   State<_WeekCourtGrid> createState() => _WeekCourtGridState();
 }
 
 class _WeekCourtGridState extends State<_WeekCourtGrid> {
-  static const _labelColWidth = 56.0;
-  static const _minHourColWidth = 48.0;
+  static const _labelColWidth = 64.0;
+  static const _minHourColWidth = 44.0;
+  /// Tüm gizli bloklar tek dar şeritte birleşir.
+  static const _collapsedColWidth = 18.0;
   static const _courtRowHeight = 36.0;
   static const _dayHeaderHeight = 24.0;
-  static const _hourHeaderHeight = 26.0;
+  static const _hourHeaderHeight = 40.0;
   static const _emptyBg = Color(0xFFF5F5F5);
+  static const _collapsedBg = Color(0xFFEEF1EF);
+  static const _collapsedFg = Color(0xFF5A6B60);
+  static const _dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-  final _hController = ScrollController();
-  final _vController = ScrollController();
+  final _h = _ScrollPair();
+  final _v = _ScrollPair();
 
-  late final List<String> _courtNames;
-  late final List<DateTime> _days;
-  late final Map<String, CourtSlot> _byKey;
-  late final List<int> _hours;
+  late List<String> _courtNames;
+  late List<DateTime> _days;
+  late Map<String, CourtSlot> _byKey;
 
   @override
   void initState() {
@@ -459,72 +665,333 @@ class _WeekCourtGridState extends State<_WeekCourtGrid> {
     _courtNames = courtNames;
     _days = days;
     _byKey = byKey;
-    _hours = List.generate(
-      AppConstants.calendarEndHour - AppConstants.calendarStartHour,
-      (i) => AppConstants.calendarStartHour + i,
-    );
   }
 
   @override
   void dispose() {
-    _hController.dispose();
-    _vController.dispose();
+    _h.dispose();
+    _v.dispose();
     super.dispose();
   }
+
+  List<_WeekCol> _buildColumns() {
+    final cols = <_WeekCol>[];
+    final collapsed = <CalendarTimeBlock>[];
+
+    void flushCollapsed() {
+      if (collapsed.isEmpty) return;
+      cols.add(_WeekCol.collapsedBundle(List<CalendarTimeBlock>.of(collapsed)));
+      collapsed.clear();
+    }
+
+    for (final block in AppConstants.calendarTimeBlocks) {
+      if (widget.expandedBlocks.contains(block.id)) {
+        flushCollapsed();
+        for (final hour in block.hours) {
+          cols.add(_WeekCol.hour(hour));
+        }
+      } else {
+        collapsed.add(block);
+      }
+    }
+    flushCollapsed();
+    return cols;
+  }
+
+  int _busyCountInBlock(CalendarTimeBlock block) {
+    var count = 0;
+    for (final day in _days) {
+      for (final court in _courtNames) {
+        for (final hour in block.hours) {
+          final slot = _byKey['${day.year}-${day.month}-${day.day}|$court|$hour'];
+          if (slot != null && slot.status != SlotStatus.available) count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  Future<void> _pickCollapsedBlock(
+    BuildContext context,
+    List<CalendarTimeBlock> blocks,
+  ) async {
+    if (blocks.isEmpty) return;
+    if (blocks.length == 1) {
+      widget.onToggleBlock(blocks.first.id);
+      return;
+    }
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Hangi bloğu açmak istersin?',
+                    style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ),
+              for (final b in blocks)
+                ListTile(
+                  leading: const Icon(Icons.unfold_more),
+                  title: Text(b.label),
+                  subtitle: Text(b.rangeLabel),
+                  trailing: Text('${_busyCountInBlock(b)} dolu'),
+                  onTap: () => Navigator.pop(ctx, b.id),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Vazgeç'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (chosen != null) widget.onToggleBlock(chosen);
+  }
+
+  double _colWidth(_WeekCol col, double hourColWidth) =>
+      col.isCollapsedBlock ? _collapsedColWidth : hourColWidth;
+
+  double get _leftBodyHeight =>
+      _days.length * (_dayHeaderHeight + _courtNames.length * _courtRowHeight) + 12;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hourCount = _hours.length;
+    final cols = _buildColumns();
 
     return _scrollConfig(
       context,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final available = constraints.maxWidth;
-          final minTable = _labelColWidth + hourCount * _minHourColWidth;
-          final hourColWidth = available >= minTable
-              ? (available - _labelColWidth) / hourCount
-              : _minHourColWidth;
-          final contentWidth = _labelColWidth + hourCount * hourColWidth;
+          final available = math.max(constraints.maxWidth - _labelColWidth, 0.0);
+          final hourColCount = cols.where((c) => !c.isCollapsedBlock).length;
+          final collapsedWidth =
+              cols.where((c) => c.isCollapsedBlock).length * _collapsedColWidth;
+          final hourBudget = math.max(available - collapsedWidth, 0.0);
+          final hourColWidth = hourColCount == 0
+              ? _minHourColWidth
+              : (hourBudget >= hourColCount * _minHourColWidth
+                  ? hourBudget / hourColCount
+                  : _minHourColWidth);
 
-          return ClipRect(
-            child: SingleChildScrollView(
-              controller: _hController,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: contentWidth,
-                child: CustomScrollView(
-                  controller: _vController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: _hourHeaderHeight,
-                        width: contentWidth,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: _labelColWidth,
-                              child: Text(
-                                'Kort',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+          var bodyWidth = 0.0;
+          for (final c in cols) {
+            bodyWidth += _colWidth(c, hourColWidth);
+          }
+          bodyWidth = math.max(bodyWidth, available);
+
+          Widget headerCell(_WeekCol col) {
+            final w = _colWidth(col, hourColWidth);
+            if (col.isCollapsedBlock) {
+              final blocks = col.blocks;
+              final busy = blocks.fold<int>(0, (sum, b) => sum + _busyCountInBlock(b));
+              return SizedBox(
+                width: w,
+                height: _hourHeaderHeight,
+                child: Tooltip(
+                  message: '${blocks.map((b) => b.label).join(' · ')} — dokunarak aç',
+                  child: Material(
+                    color: _collapsedBg,
+                    child: InkWell(
+                      onTap: () => _pickCollapsedBlock(context, blocks),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.chevron_right, size: 14, color: _collapsedFg),
+                          if (busy > 0)
+                            Text(
+                              '$busy',
+                              style: const TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                color: _collapsedFg,
                               ),
                             ),
-                            ..._hours.map(
-                              (h) => SizedBox(
-                                width: hourColWidth,
-                                child: Text(
-                                  h.toString().padLeft(2, '0'),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+            return SizedBox(
+              width: w,
+              height: _hourHeaderHeight,
+              child: Center(
+                child: Text(
+                  col.hour!.toString().padLeft(2, '0'),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          Widget bodyCell(_WeekCol col, DateTime day, String courtName) {
+            final w = _colWidth(col, hourColWidth);
+            if (col.isCollapsedBlock) {
+              return SizedBox(
+                width: w,
+                height: _courtRowHeight,
+                child: Material(
+                  color: _collapsedBg,
+                  child: InkWell(
+                    onTap: () => _pickCollapsedBlock(context, col.blocks),
+                    child: const Center(
+                      child: Icon(Icons.more_vert, size: 12, color: _collapsedFg),
+                    ),
+                  ),
+                ),
+              );
+            }
+            final slot = _byKey['${day.year}-${day.month}-${day.day}|$courtName|${col.hour}'];
+            return SizedBox(
+              width: w,
+              height: _courtRowHeight,
+              child: Padding(
+                padding: const EdgeInsets.all(1),
+                child: slot == null
+                    ? const ColoredBox(color: _emptyBg)
+                    : WeekSlotCell(
+                        slot: slot,
+                        onTap: () => widget.onSlotTap(slot),
+                      ),
+              ),
+            );
+          }
+
+          // Blok şeridi + saat başlıkları aynı yatay scroll içinde (tek controller).
+          Widget topHeaders() {
+            return SizedBox(
+              height: 28 + _hourHeaderHeight,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: _labelColWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 28,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Blok',
+                                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: _hourHeaderHeight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Gün/Kort',
+                                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: _h.a,
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: bodyWidth,
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 28,
+                              child: Row(
+                                children: [
+                                  for (final block in AppConstants.calendarTimeBlocks)
+                                    Builder(
+                                      builder: (_) {
+                                        final expanded = widget.expandedBlocks.contains(block.id);
+                                        // Gizli bloklar tek dar şeritte birleşir: yalnızca ilk gizliye genişlik ver.
+                                        final collapsedBlocks = AppConstants.calendarTimeBlocks
+                                            .where((b) => !widget.expandedBlocks.contains(b.id))
+                                            .toList();
+                                        final isFirstCollapsed = !expanded &&
+                                            collapsedBlocks.isNotEmpty &&
+                                            collapsedBlocks.first.id == block.id;
+                                        if (!expanded && !isFirstCollapsed) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        final w = expanded
+                                            ? block.hours.length * hourColWidth
+                                            : _collapsedColWidth;
+                                        return SizedBox(
+                                          width: w,
+                                          height: 28,
+                                          child: Material(
+                                            color: expanded
+                                                ? Colors.grey.shade200
+                                                : _collapsedBg,
+                                            child: InkWell(
+                                              onTap: expanded
+                                                  ? () => widget.onToggleBlock(block.id)
+                                                  : () => _pickCollapsedBlock(
+                                                        context,
+                                                        collapsedBlocks,
+                                                      ),
+                                              child: Center(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                                                  child: Text(
+                                                    expanded
+                                                        ? '${block.label} · Gizle'
+                                                        : '${collapsedBlocks.map((b) => b.label[0]).join('')} ›',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: expanded
+                                                          ? theme.colorScheme.onSurface
+                                                          : _collapsedFg,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              height: _hourHeaderHeight,
+                              child: ColoredBox(
+                                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                                child: Row(
+                                  children: [for (final col in cols) headerCell(col)],
                                 ),
                               ),
                             ),
@@ -532,97 +999,227 @@ class _WeekCourtGridState extends State<_WeekCourtGrid> {
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: Divider(height: 1)),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, dayIndex) {
-                          final day = _days[dayIndex];
-                          return RepaintBoundary(
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              topHeaders(),
+              const Divider(height: 1),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: _labelColWidth,
+                      child: ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                        child: SingleChildScrollView(
+                          controller: _v.a,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: SizedBox(
+                            width: _labelColWidth,
+                            height: _leftBodyHeight,
                             child: Column(
-                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                SizedBox(
-                                  height: _dayHeaderHeight,
-                                  width: contentWidth,
-                                  child: ColoredBox(
-                                    color: AppColors.navy.withValues(alpha: 0.08),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          '${['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][day.weekday - 1]} '
-                                          '${day.day}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.labelMedium?.copyWith(
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.navy,
-                                            fontSize: 11,
+                                for (final day in _days) ...[
+                                  SizedBox(
+                                    height: _dayHeaderHeight,
+                                    child: ColoredBox(
+                                      color: AppColors.navy.withValues(alpha: 0.08),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            '${_dayNames[day.weekday - 1]} ${day.day}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.labelMedium?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.navy,
+                                              fontSize: 11,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                ..._courtNames.map((courtName) {
-                                  return SizedBox(
-                                    height: _courtRowHeight,
-                                    width: contentWidth,
-                                    child: Row(
-                                      children: [
-                                        SizedBox(
-                                          width: _labelColWidth,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(left: 4),
-                                            child: Text(
-                                              courtName.replaceFirst('Kort ', 'K'),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.labelSmall?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 10,
-                                              ),
+                                  for (final courtName in _courtNames)
+                                    SizedBox(
+                                      height: _courtRowHeight,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 6),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            courtName.replaceFirst('Kort ', 'K'),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 10,
                                             ),
                                           ),
                                         ),
-                                        ..._hours.map((hour) {
-                                          final slot = _byKey[
-                                              '${day.year}-${day.month}-${day.day}|$courtName|$hour'];
-                                          return SizedBox(
-                                            width: hourColWidth,
-                                            height: _courtRowHeight,
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(1),
-                                              child: slot == null
-                                                  ? const ColoredBox(color: _emptyBg)
-                                                  : WeekSlotCell(
-                                                      slot: slot,
-                                                      onTap: () => widget.onSlotTap(slot),
-                                                    ),
-                                            ),
-                                          );
-                                        }),
-                                      ],
+                                      ),
                                     ),
-                                  );
-                                }),
+                                ],
+                                const SizedBox(height: 12),
                               ],
                             ),
-                          );
-                        },
-                        childCount: _days.length,
-                        addAutomaticKeepAlives: false,
-                        addRepaintBoundaries: false,
+                          ),
+                        ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    Expanded(
+                      child: Scrollbar(
+                        controller: _h.b,
+                        thumbVisibility: bodyWidth > available + 0.5,
+                        notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
+                        child: SingleChildScrollView(
+                          controller: _h.b,
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: bodyWidth,
+                            child: Scrollbar(
+                              controller: _v.b,
+                              thumbVisibility: true,
+                              child: SingleChildScrollView(
+                                controller: _v.b,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: SizedBox(
+                                  width: bodyWidth,
+                                  height: _leftBodyHeight,
+                                  child: Column(
+                                    children: [
+                                      for (final day in _days) ...[
+                                        SizedBox(
+                                          height: _dayHeaderHeight,
+                                          width: bodyWidth,
+                                          child: ColoredBox(
+                                            color: AppColors.navy.withValues(alpha: 0.05),
+                                          ),
+                                        ),
+                                        for (final courtName in _courtNames)
+                                          SizedBox(
+                                            height: _courtRowHeight,
+                                            width: bodyWidth,
+                                            child: Row(
+                                              children: [
+                                                for (final col in cols)
+                                                  bodyCell(col, day, courtName),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                      const SizedBox(height: 12),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _CourtBlockHeader extends StatelessWidget {
+  const _CourtBlockHeader({
+    required this.block,
+    required this.expanded,
+    required this.hiddenCount,
+    required this.onTap,
+  });
+
+  final CalendarTimeBlock block;
+  final bool expanded;
+  final int hiddenCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: expanded ? Colors.grey.shade200 : const Color(0xFFEEF1EF),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 34,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                Icon(
+                  expanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  flex: 2,
+                  child: Text(
+                    block.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  flex: 3,
+                  child: Text(
+                    block.rangeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (!expanded && hiddenCount > 0) ...[
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$hiddenCount dolu',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 6),
+                Text(
+                  expanded ? 'Gizle' : 'Göster',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
