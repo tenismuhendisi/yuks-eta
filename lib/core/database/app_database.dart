@@ -1,5 +1,6 @@
 import 'package:crm_app/core/database/connection/connect.dart';
 import 'package:crm_app/core/database/seed_data.dart';
+import 'package:crm_app/core/enums/court_booking_failure.dart';
 import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
@@ -11,6 +12,7 @@ class Users extends Table {
   TextColumn get password => text()();
   TextColumn get role => text()();
   TextColumn get phone => text().nullable()();
+  RealColumn get creditBalance => real().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -45,7 +47,23 @@ class CourtRentals extends Table {
   TextColumn get athleteId => text().references(Users, #id)();
   DateTimeColumn get startTime => dateTime()();
   DateTimeColumn get endTime => dateTime()();
+  RealColumn get creditCost => real().withDefault(const Constant(0))();
   TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class CreditTransactions extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().references(Users, #id)();
+  RealColumn get amount => real()();
+  TextColumn get type => text()();
+  TextColumn get rentalId => text().nullable().references(CourtRentals, #id)();
+  TextColumn get description => text()();
+  RealColumn get balanceAfter => real()();
+  DateTimeColumn get createdAt => dateTime()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -138,6 +156,7 @@ class LessonAttendances extends Table {
   Courts,
   CourtBlocks,
   CourtRentals,
+  CreditTransactions,
   Lessons,
   LessonParticipants,
   Payments,
@@ -149,7 +168,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -179,6 +198,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             await SeedData.syncAthleteBallLevelsAndEmails(this);
           }
+          if (from < 8) {
+            await m.addColumn(users, users.creditBalance);
+            await m.addColumn(courtRentals, courtRentals.creditCost);
+            await m.addColumn(courtRentals, courtRentals.createdAt);
+            await m.createTable(creditTransactions);
+            await SeedData.seedMemberCredits(this);
+          }
         },
       );
 
@@ -190,6 +216,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<User?> getUserById(String id) {
     return (select(users)..where((u) => u.id.equals(id))).getSingleOrNull();
+  }
+
+  Stream<User?> watchUserById(String id) {
+    return (select(users)..where((u) => u.id.equals(id))).watchSingleOrNull();
   }
 
   Future<List<User>> getUsersByRole(String role) {
@@ -262,6 +292,160 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> insertRental(CourtRentalsCompanion rental) =>
       into(courtRentals).insert(rental);
+
+  /// Atomik kort kiralama: müsaitlik + çakışma + kredi düşümü tek transaction.
+  Future<CourtBookingResult> bookCourtRental({
+    required String rentalId,
+    required String courtId,
+    required String athleteId,
+    required DateTime startTime,
+    required DateTime endTime,
+    required double creditCost,
+    String? notes,
+  }) async {
+    return transaction(() async {
+      if (!startTime.isAfter(DateTime.now())) {
+        return CourtBookingResult.err(CourtBookingFailure.pastSlot);
+      }
+
+      final athlete = await (select(users)..where((u) => u.id.equals(athleteId)))
+          .getSingleOrNull();
+      if (athlete == null) {
+        return CourtBookingResult.err(CourtBookingFailure.userNotFound);
+      }
+      if (athlete.creditBalance < creditCost) {
+        return CourtBookingResult.err(CourtBookingFailure.insufficientCredits);
+      }
+
+      if (!await _isCourtFreeInTransaction(
+        courtId: courtId,
+        start: startTime,
+        end: endTime,
+      )) {
+        return CourtBookingResult.err(CourtBookingFailure.slotUnavailable);
+      }
+
+      if (await _hasUserRentalOverlapInTransaction(
+        athleteId: athleteId,
+        start: startTime,
+        end: endTime,
+      )) {
+        return CourtBookingResult.err(CourtBookingFailure.userOverlap);
+      }
+
+      final newBalance = athlete.creditBalance - creditCost;
+      final rows = await (update(users)
+            ..where((u) => u.id.equals(athleteId))
+            ..where((u) => u.creditBalance.isBiggerOrEqualValue(creditCost)))
+          .write(UsersCompanion(creditBalance: Value(newBalance)));
+      if (rows == 0) {
+        return CourtBookingResult.err(CourtBookingFailure.insufficientCredits);
+      }
+
+      await into(courtRentals).insert(
+        CourtRentalsCompanion.insert(
+          id: rentalId,
+          courtId: courtId,
+          athleteId: athleteId,
+          startTime: startTime,
+          endTime: endTime,
+          creditCost: Value(creditCost),
+          notes: Value(notes),
+        ),
+      );
+
+      await into(creditTransactions).insert(
+        CreditTransactionsCompanion.insert(
+          id: 'ctx-$rentalId',
+          userId: athleteId,
+          amount: -creditCost,
+          type: 'rental',
+          rentalId: Value(rentalId),
+          description: 'Kort kiralama',
+          balanceAfter: newBalance,
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      final rental = await (select(courtRentals)..where((r) => r.id.equals(rentalId)))
+          .getSingle();
+      return CourtBookingResult.ok(rental);
+    });
+  }
+
+  Future<double> addTestCredits({
+    required String userId,
+    required double amount,
+  }) async {
+    if (amount <= 0) return (await getUserById(userId))?.creditBalance ?? 0;
+
+    return transaction(() async {
+      final user = await (select(users)..where((u) => u.id.equals(userId)))
+          .getSingleOrNull();
+      if (user == null) return 0.0;
+
+      final newBalance = user.creditBalance + amount;
+      await (update(users)..where((u) => u.id.equals(userId))).write(
+        UsersCompanion(creditBalance: Value(newBalance)),
+      );
+
+      final txId = 'ctx-test-${DateTime.now().microsecondsSinceEpoch}';
+      await into(creditTransactions).insert(
+        CreditTransactionsCompanion.insert(
+          id: txId,
+          userId: userId,
+          amount: amount,
+          type: 'top_up_test',
+          description: 'Test kredi yükleme',
+          balanceAfter: newBalance,
+          createdAt: DateTime.now(),
+        ),
+      );
+      return newBalance;
+    });
+  }
+
+  Future<bool> _isCourtFreeInTransaction({
+    required String courtId,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final blocks = await (select(courtBlocks)
+          ..where((b) => b.courtId.equals(courtId))
+          ..where((b) => b.startTime.isSmallerThanValue(end))
+          ..where((b) => b.endTime.isBiggerThanValue(start)))
+        .get();
+    if (blocks.isNotEmpty) return false;
+
+    final rentals = await (select(courtRentals)
+          ..where((r) => r.courtId.equals(courtId))
+          ..where((r) => r.startTime.isSmallerThanValue(end))
+          ..where((r) => r.endTime.isBiggerThanValue(start)))
+        .get();
+    if (rentals.isNotEmpty) return false;
+
+    final courtLessons = await (select(lessons)
+          ..where((l) => l.courtId.equals(courtId))
+          ..where((l) => l.isTemplate.equals(false))
+          ..where((l) => l.status.equals('confirmed'))
+          ..where((l) => l.startTime.isSmallerThanValue(end))
+          ..where((l) => l.endTime.isBiggerThanValue(start)))
+        .get();
+    return courtLessons.isEmpty;
+  }
+
+  Future<bool> _hasUserRentalOverlapInTransaction({
+    required String athleteId,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final rentals = await (select(courtRentals)
+          ..where((r) => r.athleteId.equals(athleteId))
+          ..where((r) => r.startTime.isSmallerThanValue(end))
+          ..where((r) => r.endTime.isBiggerThanValue(start)))
+        .get();
+    return rentals.isNotEmpty;
+  }
 
   // --- Lessons ---
 

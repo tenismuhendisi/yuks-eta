@@ -1,15 +1,18 @@
 import 'dart:math' as math;
 
+import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/constants/app_constants.dart';
 import 'package:crm_app/core/enums/user_role.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/theme/app_theme.dart';
 import 'package:crm_app/core/utils/app_date_format.dart';
+import 'package:crm_app/features/courts/widgets/add_test_credits_dialog.dart';
 import 'package:crm_app/features/courts/widgets/block_court_dialog.dart';
 import 'package:crm_app/features/courts/widgets/court_slot_cell.dart';
 import 'package:crm_app/features/courts/widgets/rent_court_dialog.dart';
 import 'package:crm_app/features/courts/widgets/week_slot_cell.dart';
+import 'package:crm_app/core/widgets/schedule_rental_slot.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -139,6 +142,12 @@ class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
             ],
           ),
         ),
+        if (widget.role == UserRole.athlete) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+            child: _MemberCreditBar(userId: widget.userId),
+          ),
+        ],
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
@@ -247,6 +256,14 @@ class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
         _refresh();
       }
     } else if (widget.role == UserRole.athlete && slot.status == SlotStatus.available) {
+      if (!slot.startTime.isAfter(DateTime.now())) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Geçmiş saat için kiralama yapılamaz')),
+          );
+        }
+        return;
+      }
       final result = await showDialog<bool>(
         context: context,
         builder: (_) => RentCourtDialog(
@@ -1225,6 +1242,71 @@ class _CourtBlockHeader extends StatelessWidget {
   }
 }
 
+class _MemberCreditBar extends ConsumerWidget {
+  const _MemberCreditBar({required this.userId});
+
+  final String userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final db = ref.watch(databaseProvider);
+
+    return StreamBuilder<User?>(
+      stream: db.watchUserById(userId),
+      builder: (context, snapshot) {
+        final balance = snapshot.data?.creditBalance ?? ref.watch(authProvider).user?.creditBalance ?? 0;
+        return Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.account_balance_wallet_outlined, color: AppColors.limeDark, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${balance.toInt()} kredi',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                      Text(
+                        '1 saat = ${AppConstants.courtRentalCreditCost.toInt()} kredi',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade700,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final newBalance = await showDialog<double>(
+                      context: context,
+                      builder: (_) => const AddTestCreditsDialog(),
+                    );
+                    if (newBalance != null && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Bakiye: ${newBalance.toInt()} kredi')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Test Kredi'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _LegendBar extends StatelessWidget {
   const _LegendBar();
 
@@ -1235,7 +1317,7 @@ class _LegendBar extends StatelessWidget {
       runSpacing: 4,
       children: [
         _LegendItem(color: Colors.green.shade100, label: 'Boş'),
-        _LegendItem(color: Colors.orange.shade100, label: 'Kiralama'),
+        _LegendItem(color: const Color(0xFFFFF3E8), label: 'Kiralama = isim'),
         _LegendItem(color: Colors.red.shade100, label: 'Kilitli'),
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -1283,6 +1365,41 @@ class _LegendBar extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             const Text('Özel = baş harf', style: TextStyle(fontSize: 11)),
+          ],
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 22,
+              height: 14,
+              decoration: BoxDecoration(
+                color: RentalSlotColors.fill,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: RentalSlotColors.border),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: RentalSlotColors.fill,
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: RentalSlotColors.border),
+                    ),
+                  ),
+                  const Center(
+                    child: Text('Can', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800)),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(width: 3, color: RentalSlotColors.rail),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Text('Kiralama = sağ şerit', style: TextStyle(fontSize: 11)),
           ],
         ),
         Text('Renk = antrenör', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),

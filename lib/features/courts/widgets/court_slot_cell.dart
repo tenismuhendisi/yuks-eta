@@ -2,9 +2,10 @@ import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/theme/coach_colors.dart';
 import 'package:crm_app/core/utils/app_date_format.dart';
 import 'package:crm_app/core/widgets/schedule_lesson_slot.dart';
+import 'package:crm_app/core/widgets/schedule_rental_slot.dart';
 import 'package:flutter/material.dart';
 
-/// Kort grid hücresi — dersler [ScheduleLessonSlot] ile takvimle aynı dil.
+/// Kort grid hücresi — dersler [ScheduleLessonSlot], kiralama [ScheduleRentalSlot].
 class CourtSlotCell extends StatelessWidget {
   const CourtSlotCell({
     super.key,
@@ -24,15 +25,16 @@ class CourtSlotCell extends StatelessWidget {
     final time = AppDateFormat.time(slot.startTime);
     final tooltip = [
       '${slot.courtName} · $time',
-      if (slot.primaryLabel != null) slot.primaryLabel!,
+      if (slot.isRental && slot.renterName != null) 'Kiralama · ${slot.renterName}',
+      if (slot.isGroupLesson && slot.primaryLabel != null) slot.primaryLabel!,
+      if (slot.isPrivateLesson && slot.primaryLabel != null) slot.primaryLabel!,
       if (slot.secondaryLabel != null) slot.secondaryLabel!,
     ].join('\n');
 
     if (slot.status == SlotStatus.lesson) {
-      return Tooltip(
-        message: tooltip,
-        waitDuration: const Duration(milliseconds: 400),
-        child: ScheduleLessonSlot(
+      return _tooltip(
+        tooltip,
+        ScheduleLessonSlot(
           coachId: slot.coachId,
           isGroup: slot.isGroupLesson,
           isTentative: false,
@@ -46,6 +48,16 @@ class CourtSlotCell extends StatelessWidget {
       );
     }
 
+    if (slot.status == SlotStatus.rental) {
+      return _tooltip(
+        tooltip,
+        ScheduleRentalSlot(
+          renterName: slot.renterName ?? 'Kiralama',
+          compact: compact,
+        ),
+      );
+    }
+
     final Color bg;
     final Color border;
     final radius = BorderRadius.circular(compact ? 8 : 10);
@@ -54,8 +66,8 @@ class CourtSlotCell extends StatelessWidget {
         bg = const Color(0xFFF7F8F7);
         border = const Color(0xFFE6E8E6);
       case SlotStatus.rental:
-        bg = const Color(0xFFFFF6EB);
-        border = const Color(0xFFFFE0B8);
+        bg = RentalSlotColors.fill;
+        border = RentalSlotColors.border;
       case SlotStatus.blocked:
         bg = const Color(0xFFF8F1F1);
         border = const Color(0xFFE8CACA);
@@ -64,10 +76,9 @@ class CourtSlotCell extends StatelessWidget {
         border = Colors.transparent;
     }
 
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: Material(
+    return _tooltip(
+      tooltip,
+      Material(
         color: bg,
         borderRadius: radius,
         clipBehavior: Clip.antiAlias,
@@ -79,9 +90,19 @@ class CourtSlotCell extends StatelessWidget {
               borderRadius: radius,
               border: Border.all(color: border),
             ),
+            child: const SizedBox.expand(),
           ),
         ),
       ),
+    );
+  }
+
+  /// Grid hücresini doldurur; Tooltip child'ının boyutu olmasını sağlar.
+  Widget _tooltip(String message, Widget child) {
+    return Tooltip(
+      message: message,
+      waitDuration: const Duration(milliseconds: 400),
+      child: SizedBox.expand(child: child),
     );
   }
 }

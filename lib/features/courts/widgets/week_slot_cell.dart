@@ -1,5 +1,6 @@
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/widgets/schedule_lesson_slot.dart';
+import 'package:crm_app/core/widgets/schedule_rental_slot.dart';
 import 'package:flutter/material.dart';
 
 /// Haftalık grid için hafif hücre.
@@ -42,15 +43,26 @@ class WeekSlotCell extends StatelessWidget {
       final primary = slot.isPrivateLesson
           ? compactPrivateLabel(slot)
           : (slot.primaryLabel ?? '');
-      return ScheduleLessonSlot(
-        coachId: slot.coachId,
-        isGroup: slot.isGroupLesson,
-        isTentative: false,
-        primary: primary,
-        groupCount: slot.isGroupLesson ? slot.participantCount : null,
-        compact: true,
-        onTap: canTap ? onTap : null,
-        enabled: canTap,
+      return SizedBox.expand(
+        child: ScheduleLessonSlot(
+          coachId: slot.coachId,
+          isGroup: slot.isGroupLesson,
+          isTentative: false,
+          primary: primary,
+          groupCount: slot.isGroupLesson ? slot.participantCount : null,
+          compact: true,
+          onTap: canTap ? onTap : null,
+          enabled: canTap,
+        ),
+      );
+    }
+
+    if (slot.status == SlotStatus.rental) {
+      return SizedBox.expand(
+        child: ScheduleRentalSlot(
+          renterName: slot.renterName ?? 'Kiralama',
+          compact: true,
+        ),
       );
     }
 
@@ -61,8 +73,8 @@ class WeekSlotCell extends StatelessWidget {
         bg = const Color(0xFFF7F8F7);
         border = const Color(0xFFE6E8E6);
       case SlotStatus.rental:
-        bg = const Color(0xFFFFF6EB);
-        border = const Color(0xFFFFE0B8);
+        bg = RentalSlotColors.fill;
+        border = RentalSlotColors.border;
       case SlotStatus.blocked:
         bg = const Color(0xFFF8F1F1);
         border = const Color(0xFFE8CACA);
@@ -77,6 +89,7 @@ class WeekSlotCell extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: border),
       ),
+      child: const SizedBox.expand(),
     );
 
     if (!canTap) return child;

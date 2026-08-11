@@ -10,12 +10,37 @@ Bu sürümde antrenör panelinin günlük kullanımını hızlandırmak için **
 
 - İsim / e-posta / grup / seviye **arama**
 - Top seviyesi ve grup için **yatay kaydırılabilir** filtreler
-- Seviye chip’leri kompakt: top görseli + tek harf (`K` `T` `Y` `S`)
-- Kartlarda seviye metni kaldırıldı; seviye yalnızca top görseliyle anlaşılıyor
+- Seviye chip’leri: yalnızca **top görselleri** (harfsiz, sabit boyutlu chip)
 
 ![Öğrenciler — arama ve filtreler](screenshots/01-ogrenciler-arama-filtre.png)
 
 ![Öğrenciler — seviye chip’leri](screenshots/02-ogrenciler-seviye-chip.png)
+
+---
+
+## 4. Kort kiralama: üye girişi, kredi ve güvenli rezervasyon
+
+PFM benzeri kredi sistemi ve çift rezervasyonu önleyen atomik kiralama eklendi.
+
+**Üye girişi**
+- Login’de **Üye** aktif: `can.yilmaz@eta.com` / `sporcu123`
+- Üye yalnızca kort durumunu görür ve kiralama yapar
+- Antrenör akışı aynı şekilde devam eder
+
+**Kredi sistemi**
+- 1 saatlik slot = **1 kredi**
+- Kiralama diyalogunda bakiye ve ücret gösterilir
+- Gerçek ödeme yok; **Test Kredi** popup ile +5 / +10 / +20 / +50 yükleme
+- Demo üye başlangıç bakiyesi: **20 kredi**
+
+**Güvenilir kiralama (DB transaction)**
+- Müsaitlik + ders/blok çakışması + aynı üyenin çakışan kirası + kredi düşümü tek transaction
+- `CreditTransactions` defteri ile izlenebilir kayıt
+
+**Kort grid görünümü**
+- Kiralama slotlarında **kiracı adı** görünür
+- Grup (sol şerit) / özel ders (antrenör rengi) / kiralama (turuncu sağ şerit) görsel ayrımı
+- Web layout hataları giderildi (sıfır boyutlu slot / focus traversal)
 
 ---
 
@@ -59,7 +84,8 @@ Koyu app bar üzerinde logonun koyu kısmı kayboluyor, diyaloglarda **İptal** 
 | Öğrenciler | Arama, yatay filtre scroll, ITF top görselleri |
 | Yoklama | Kompakt durum seçimi, Bugün/Tümü, alınmayanlar |
 | Tema | Kontrast odaklı `AppTheme` + `EtaLogo` |
-| Veri | Ball level, grup notları, yoklama toplu sorgu |
+| Kort kiralama | Üye girişi, kredi, atomik `bookCourtRental`, kiracı adı slot |
+| Veri | Şema v8: `creditBalance`, `CreditTransactions`, ball level |
 
 ---
 

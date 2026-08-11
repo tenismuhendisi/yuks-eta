@@ -10,6 +10,7 @@ class _DemoAccount {
     required this.email,
     required this.password,
     required this.icon,
+    required this.label,
     this.enabled = true,
   });
 
@@ -17,6 +18,7 @@ class _DemoAccount {
   final String email;
   final String password;
   final IconData icon;
+  final String label;
   final bool enabled;
 }
 
@@ -26,19 +28,21 @@ const _demoAccounts = [
     email: 'elif.aktus@eta.com',
     password: 'coach123',
     icon: Icons.sports,
-  ),
-  _DemoAccount(
-    role: UserRole.admin,
-    email: 'admin@eta.com',
-    password: 'admin123',
-    icon: Icons.admin_panel_settings_outlined,
-    enabled: false,
+    label: 'Antrenör',
   ),
   _DemoAccount(
     role: UserRole.athlete,
     email: 'can.yilmaz@eta.com',
     password: 'sporcu123',
     icon: Icons.person_outline,
+    label: 'Üye',
+  ),
+  _DemoAccount(
+    role: UserRole.admin,
+    email: 'admin@eta.com',
+    password: 'admin123',
+    icon: Icons.admin_panel_settings_outlined,
+    label: 'Yönetici',
     enabled: false,
   ),
   _DemoAccount(
@@ -46,6 +50,7 @@ const _demoAccounts = [
     email: 'mehmet@eta.com',
     password: 'veli123',
     icon: Icons.family_restroom,
+    label: 'Veli',
     enabled: false,
   ),
 ];
@@ -93,11 +98,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (error == null) {
       final role = ref.read(authProvider).role;
-      if (role != UserRole.coach) {
+      if (role != UserRole.coach && role != UserRole.athlete) {
         ref.read(authProvider.notifier).logout();
         setState(() {
           _loading = false;
-          _error = 'Şimdilik yalnızca antrenör girişi açık (Coming soon).';
+          _error = 'Bu rol için giriş henüz açık değil.';
         });
         return;
       }
@@ -107,6 +112,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _loading = false;
       _error = error;
     });
+  }
+
+  String get _subtitle {
+    final demo = _demoAccounts.where((a) => a.email == _selectedDemoEmail).firstOrNull;
+    if (demo != null && demo.enabled) return '${demo.label} Girişi';
+    return 'Antrenör veya üye girişi';
   }
 
   @override
@@ -123,7 +134,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const EtaLogo(height: 88),
                 const SizedBox(height: 16),
                 Text(
-                  'Antrenör Girişi',
+                  _subtitle,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.grey.shade700,
@@ -209,7 +220,7 @@ class _DemoAccounts extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                'Şimdilik yalnızca antrenör girişi aktif',
+                'Antrenör ve üye girişi aktif',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey.shade600,
                     ),
@@ -233,7 +244,7 @@ class _DemoAccounts extends StatelessWidget {
                             : null,
                   ),
                   title: Text(
-                    account.role.label,
+                    account.label,
                     style: TextStyle(
                       fontWeight: selected && enabled ? FontWeight.w600 : FontWeight.normal,
                     ),
@@ -241,7 +252,7 @@ class _DemoAccounts extends StatelessWidget {
                   subtitle: Text(
                     enabled
                         ? '${account.email} · ${account.password}'
-                        : 'Coming soon',
+                        : 'Yakında',
                     style: TextStyle(
                       fontSize: 11,
                       fontStyle: enabled ? FontStyle.normal : FontStyle.italic,

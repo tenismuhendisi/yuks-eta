@@ -267,11 +267,10 @@ class _StudentsScreenState extends ConsumerState<StudentsScreen> {
                             onSelected: (_) => setState(() => _levelFilter = null),
                           ),
                           for (final level in BallLevel.values)
-                            FilterChip(
-                              avatar: ItfTennisBallAvatar(level: level, size: 18),
-                              label: Text(level.label[0]),
+                            _BallLevelFilterChip(
+                              level: level,
                               selected: _levelFilter == level,
-                              onSelected: (_) => setState(() {
+                              onTap: () => setState(() {
                                 _levelFilter =
                                     _levelFilter == level ? null : level;
                               }),
@@ -355,19 +354,60 @@ class _HorizontalChipScroller extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScrollConfiguration(
-      behavior: const _DragScrollBehavior(),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        primary: false,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              children[i],
+    return SizedBox(
+      height: 40,
+      child: ScrollConfiguration(
+        behavior: const _DragScrollBehavior(),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          primary: false,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                children[i],
+              ],
             ],
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Top filtresi — sabit boyut, web focus traversal uyumlu.
+class _BallLevelFilterChip extends StatelessWidget {
+  const _BallLevelFilterChip({
+    required this.level,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final BallLevel level;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final chipTheme = Theme.of(context).chipTheme;
+    return Material(
+      color: selected
+          ? (chipTheme.selectedColor ?? Theme.of(context).colorScheme.primaryContainer)
+          : (chipTheme.backgroundColor ?? Theme.of(context).colorScheme.surface),
+      shape: StadiumBorder(
+        side: chipTheme.side ?? BorderSide.none,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 40,
+          height: 36,
+          child: Center(
+            child: ItfTennisBallAvatar(level: level, size: 24),
+          ),
         ),
       ),
     );

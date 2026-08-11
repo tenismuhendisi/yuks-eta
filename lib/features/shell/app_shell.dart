@@ -1,3 +1,4 @@
+import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/enums/user_role.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/widgets/eta_logo.dart';
@@ -27,7 +28,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     final user = auth.user!;
     final narrow = MediaQuery.sizeOf(context).width < 420;
 
-    // Şimdilik yalnızca antrenör akışı aktif.
+    // Antrenör ve üye akışları aktif.
+    if (role == UserRole.athlete) {
+      return _MemberShell(user: user);
+    }
+
     if (role != UserRole.coach) {
       return Scaffold(
         appBar: AppBar(
@@ -43,7 +48,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Bu rol için panel yakında gelecek.\nŞimdilik antrenör girişi ile devam edin.',
+              'Bu rol için panel yakında gelecek.\nAntrenör veya üye girişi ile devam edin.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -131,6 +136,67 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: _CoachBottomNav(
         index: _index,
         onChanged: (i) => setState(() => _index = i),
+      ),
+    );
+  }
+}
+
+/// Üye: yalnızca kort durumu + kiralama.
+class _MemberShell extends ConsumerWidget {
+  const _MemberShell({required this.user});
+
+  final User user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final narrow = MediaQuery.sizeOf(context).width < 420;
+
+    return Scaffold(
+      appBar: AppBar(
+        titleSpacing: narrow ? 8 : null,
+        title: Row(
+          children: [
+            EtaLogo(height: narrow ? 26 : 32, onDark: true),
+            if (!narrow) ...[
+              const SizedBox(width: 10),
+              const Flexible(
+                child: Text('Kort Kiralama', overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          if (!narrow)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Chip(
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                side: BorderSide.none,
+                labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                avatar: CircleAvatar(
+                  backgroundColor: const Color(0xFFB8D600),
+                  child: Text(
+                    user.name.characters.first,
+                    style: const TextStyle(
+                      color: Color(0xFF0B1C2C),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                label: Text(user.name),
+              ),
+            ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Çıkış',
+            onPressed: () => ref.read(authProvider.notifier).logout(),
+          ),
+        ],
+      ),
+      body: CourtManagementScreen(
+        role: UserRole.athlete,
+        userId: user.id,
       ),
     );
   }

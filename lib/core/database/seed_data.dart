@@ -21,6 +21,7 @@ class SeedData {
   static Future<void> seed(AppDatabase db) async {
     await _seedBaseUsersAndCourts(db);
     await seedAcademyRoster(db);
+    await seedMemberCredits(db);
   }
 
   static Future<void> _seedBaseUsersAndCourts(AppDatabase db) async {
@@ -310,6 +311,7 @@ class SeedData {
       password: 'sporcu123',
       role: 'athlete',
       phone: const Value('0544 777 8899'),
+      creditBalance: const Value(20),
       createdAt: DateTime.now(),
     ));
     profiles.add(StudentProfilesCompanion.insert(
@@ -332,6 +334,15 @@ class SeedData {
       batch.insertAll(db.lessonParticipants, participants, mode: InsertMode.insertOrIgnore);
       batch.insertAll(db.lessonAttendances, attendances, mode: InsertMode.insertOrIgnore);
     });
+  }
+
+  /// Demo üye hesabına başlangıç kredisi (migration v8).
+  static Future<void> seedMemberCredits(AppDatabase db) async {
+    const demoId = 'athlete-demo';
+    final user = await db.getUserById(demoId);
+    if (user == null || user.creditBalance > 0) return;
+
+    await db.addTestCredits(userId: demoId, amount: 20);
   }
 
   /// Mevcut veritabanlarına Kort 5 ve 6 ekler (şema v1 → v2).

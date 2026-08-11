@@ -23,6 +23,7 @@ class CourtSlot {
     this.participantNames,
     this.participantCount,
     this.representativeFirstName,
+    this.renterName,
   });
 
   final String courtId;
@@ -43,12 +44,24 @@ class CourtSlot {
   final String? participantNames;
   final int? participantCount;
   final String? representativeFirstName;
+  final String? renterName;
 
   bool get isGroupLesson => status == SlotStatus.lesson && lessonType == 'group';
   bool get isPrivateLesson => status == SlotStatus.lesson && lessonType == 'private';
+  bool get isRental => status == SlotStatus.rental;
 
-  /// Üst satır: grup kodu veya öğrenci isimleri.
+  static String _firstName(String? full) {
+    final t = (full ?? '').trim();
+    if (t.isEmpty) return '';
+    return t.split(RegExp(r'\s+')).first;
+  }
+
+  /// Üst satır: grup kodu, özel isimler veya kiracı adı.
   String? get primaryLabel {
+    if (isRental) {
+      final n = _firstName(renterName);
+      return n.isEmpty ? null : n;
+    }
     if (isGroupLesson) {
       final t = lessonTitle?.trim();
       if (t == null || t.isEmpty) return null;
@@ -253,8 +266,9 @@ class CourtAvailabilityService {
                   startTime: slotStart,
                   endTime: slotEnd,
                   status: SlotStatus.rental,
-                  detail: 'Kiralama - ${athlete?.name ?? ''}',
+                  detail: athlete?.name,
                   referenceId: rental.id,
+                  renterName: athlete?.name,
                 ));
               } else {
                 slots.add(CourtSlot(
@@ -361,6 +375,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     state = AuthState(user: user);
     return null;
+  }
+
+  Future<void> refreshUser() async {
+    final id = state.user?.id;
+    if (id == null) return;
+    final user = await _db.getUserById(id);
+    if (user != null) state = AuthState(user: user);
   }
 
   void logout() => state = const AuthState();

@@ -5,6 +5,12 @@ class AppConstants {
   static const slotDurationMinutes = 60;
   static const privateLessonMaxParticipants = 3;
 
+  /// Kort kiralama başına düşülen kredi (1 saatlik slot).
+  static const courtRentalCreditCost = 1.0;
+
+  /// Test kredi yükleme seçenekleri.
+  static const testCreditAmounts = [5.0, 10.0, 20.0, 50.0];
+
   /// Özel ders fiyat seçenekleri (₺).
   static const List<double> privateLessonPrices = [
     500,
