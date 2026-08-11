@@ -1,5 +1,6 @@
 import 'package:crm_app/core/services/court_availability_service.dart';
-import 'package:crm_app/core/theme/coach_colors.dart';
+import 'package:crm_app/core/widgets/schedule_lesson_slot.dart';
+import 'package:crm_app/core/widgets/schedule_rental_slot.dart';
 import 'package:flutter/material.dart';
 
 /// Haftalık grid için hafif hücre.
@@ -13,81 +14,82 @@ class WeekSlotCell extends StatelessWidget {
   final CourtSlot slot;
   final VoidCallback? onTap;
 
+  /// 2+ kişilik özelde: ah-os-al; tek kişide tam ad.
+  static String compactPrivateLabel(CourtSlot slot) {
+    final raw = slot.participantNames ?? slot.primaryLabel;
+    if (raw == null || raw.isEmpty) return '';
+    final parts = raw
+        .split(RegExp(r'[-·]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return raw;
+    if (parts.length == 1) {
+      final p = parts.first;
+      return p.length <= 6 ? p : p.substring(0, 6);
+    }
+    return parts.map((p) {
+      final lower = p.toLowerCase();
+      return lower.length <= 2 ? lower : lower.substring(0, 2);
+    }).join('-');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isGroup = slot.isGroupLesson;
+    final canTap = onTap != null &&
+        (slot.status == SlotStatus.available || slot.status == SlotStatus.blocked);
+
+    if (slot.status == SlotStatus.lesson) {
+      final primary = slot.isPrivateLesson
+          ? compactPrivateLabel(slot)
+          : (slot.primaryLabel ?? '');
+      return SizedBox.expand(
+        child: ScheduleLessonSlot(
+          coachId: slot.coachId,
+          isGroup: slot.isGroupLesson,
+          isTentative: false,
+          primary: primary,
+          groupCount: slot.isGroupLesson ? slot.participantCount : null,
+          compact: true,
+          onTap: canTap ? onTap : null,
+          enabled: canTap,
+        ),
+      );
+    }
+
+    if (slot.status == SlotStatus.rental) {
+      return SizedBox.expand(
+        child: ScheduleRentalSlot(
+          renterName: slot.renterName ?? 'Kiralama',
+          compact: true,
+        ),
+      );
+    }
 
     final Color bg;
     final Color border;
-    final double borderW;
-    final Color fg;
-
     switch (slot.status) {
       case SlotStatus.available:
-        bg = const Color(0xFFE8F5E9);
-        border = const Color(0xFFA5D6A7);
-        borderW = 1;
-        fg = const Color(0xFF2E7D32);
+        bg = const Color(0xFFF7F8F7);
+        border = const Color(0xFFE6E8E6);
       case SlotStatus.rental:
-        bg = const Color(0xFFFFF3E0);
-        border = const Color(0xFFFFCC80);
-        borderW = 1;
-        fg = const Color(0xFFEF6C00);
+        bg = RentalSlotColors.fill;
+        border = RentalSlotColors.border;
       case SlotStatus.blocked:
-        bg = const Color(0xFFFFEBEE);
-        border = const Color(0xFFEF9A9A);
-        borderW = 1;
-        fg = const Color(0xFFC62828);
+        bg = const Color(0xFFF8F1F1);
+        border = const Color(0xFFE8CACA);
       case SlotStatus.lesson:
-        bg = CoachColors.fill(slot.coachId);
-        border = CoachColors.border(slot.coachId, isGroup: isGroup);
-        borderW = CoachColors.borderWidth(isGroup: isGroup);
-        fg = CoachColors.onFill(slot.coachId);
+        bg = Colors.transparent;
+        border = Colors.transparent;
     }
-
-    final label = slot.primaryLabel;
-    final canTap = onTap != null &&
-        (slot.status == SlotStatus.available || slot.status == SlotStatus.blocked);
 
     final child = DecoratedBox(
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: border, width: borderW),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
       ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (isGroup)
-            Positioned(
-              top: 1,
-              left: 2,
-              child: Text(
-                'G',
-                style: TextStyle(
-                  fontSize: 7,
-                  fontWeight: FontWeight.w900,
-                  color: fg,
-                  height: 1,
-                ),
-              ),
-            ),
-          if (label != null)
-            Center(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.clip,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: fg,
-                  height: 1,
-                ),
-              ),
-            ),
-        ],
-      ),
+      child: const SizedBox.expand(),
     );
 
     if (!canTap) return child;

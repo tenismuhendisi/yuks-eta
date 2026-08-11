@@ -8,6 +8,9 @@ abstract final class AppColors {
   static const navyMuted = Color(0xFF1A2F42);
   static const surface = Color(0xFFF7F8F5);
   static const onLime = Color(0xFF0B1C2C);
+
+  /// Açık zeminlerde metin / ikincil aksiyon (İptal vb.) — lime değil.
+  static const actionText = navy;
 }
 
 class AppTheme {
@@ -27,6 +30,8 @@ class AppTheme {
       secondaryContainer: const Color(0xFFD6DEE6),
       onSecondaryContainer: AppColors.navy,
       outline: const Color(0xFFB0B8C0),
+      // TextButton / Link tarzı aksiyonlar primary (lime) kullanmasın.
+      onSurfaceVariant: AppColors.navyMuted,
     );
 
     return ThemeData(
@@ -45,6 +50,36 @@ class AppTheme {
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: const TextStyle(
+          color: AppColors.navy,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+        contentTextStyle: TextStyle(
+          color: AppColors.navy.withValues(alpha: 0.85),
+          fontSize: 15,
+          height: 1.35,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.actionText,
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.navy,
+          side: BorderSide(color: AppColors.navy.withValues(alpha: 0.25)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -69,6 +104,7 @@ class AppTheme {
         selectedColor: AppColors.lime.withValues(alpha: 0.45),
         checkmarkColor: AppColors.navy,
         labelStyle: const TextStyle(color: AppColors.navy),
+        secondaryLabelStyle: const TextStyle(color: AppColors.navy),
         side: BorderSide(color: AppColors.navy.withValues(alpha: 0.15)),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -100,6 +136,8 @@ class AppTheme {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
         fillColor: Colors.white,
+        labelStyle: TextStyle(color: AppColors.navy.withValues(alpha: 0.7)),
+        hintStyle: TextStyle(color: AppColors.navy.withValues(alpha: 0.45)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.limeDark, width: 2),
@@ -110,6 +148,15 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: AppColors.navy.withValues(alpha: 0.1),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: AppColors.navyMuted,
+        textColor: AppColors.navy,
+      ),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        textStyle: TextStyle(color: AppColors.navy),
       ),
     );
   }

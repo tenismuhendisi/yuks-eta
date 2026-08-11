@@ -31,3 +31,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/eta_logo.png
+    - assets/balls/ball_red.png
+    - assets/balls/ball_orange.png
+    - assets/balls/ball_green.png
+    - assets/balls/ball_yellow.png

@@ -1,5 +1,7 @@
 import 'package:crm_app/core/database/app_database.dart';
+import 'package:crm_app/core/enums/ball_level.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
+import 'package:crm_app/core/widgets/itf_tennis_ball.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,13 +28,36 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
   final _levelController = TextEditingController();
+  final _groupController = TextEditingController();
   final _notesController = TextEditingController();
   String? _selectedAthleteId;
   List<User> _availableAthletes = [];
   bool _saving = false;
   bool get _isEdit => widget.existingProfile != null;
 
-  static const _levels = ['Başlangıç', 'Orta', 'İleri', 'Turnuva'];
+  static const _levels = BallLevel.labels;
+
+  static String? _groupFromNotes(String? notes) {
+    if (notes == null || notes.isEmpty) return null;
+    return RegExp(r'Grup:\s*([^\s,;]+)', caseSensitive: false).firstMatch(notes)?.group(1);
+  }
+
+  static String? _notesWithoutGroup(String? notes) {
+    if (notes == null || notes.isEmpty) return null;
+    final cleaned = notes
+        .replaceAll(RegExp(r'Grup:\s*[^\s,;]+\s*', caseSensitive: false), '')
+        .trim();
+    return cleaned.isEmpty ? null : cleaned;
+  }
+
+  String? _composeNotes() {
+    final group = _groupController.text.trim();
+    final rest = _notesController.text.trim();
+    if (group.isEmpty && rest.isEmpty) return null;
+    if (group.isEmpty) return rest;
+    if (rest.isEmpty) return 'Grup: $group';
+    return 'Grup: $group · $rest';
+  }
 
   @override
   void initState() {
@@ -42,8 +67,10 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
       _emailController.text = widget.existingUser!.email;
       _phoneController.text = widget.existingUser!.phone ?? '';
       _ageController.text = widget.existingProfile!.age?.toString() ?? '';
-      _levelController.text = widget.existingProfile!.level ?? '';
-      _notesController.text = widget.existingProfile!.notes ?? '';
+      _levelController.text =
+          BallLevel.normalizeLabel(widget.existingProfile!.level);
+      _groupController.text = _groupFromNotes(widget.existingProfile!.notes) ?? '';
+      _notesController.text = _notesWithoutGroup(widget.existingProfile!.notes) ?? '';
     } else {
       _loadAvailableAthletes();
     }
@@ -68,6 +95,7 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
     _phoneController.dispose();
     _ageController.dispose();
     _levelController.dispose();
+    _groupController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -75,6 +103,7 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
   Future<void> _save() async {
     setState(() => _saving = true);
     final db = ref.read(databaseProvider);
+    final notes = _composeNotes();
 
     if (_isEdit) {
       await (db.update(db.users)..where((u) => u.id.equals(widget.existingUser!.id))).write(
@@ -89,7 +118,7 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
             coachId: Value(widget.coachId),
             age: Value(int.tryParse(_ageController.text)),
             level: Value(_levelController.text.trim().isEmpty ? null : _levelController.text.trim()),
-            notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
+            notes: Value(notes),
             updatedAt: Value(DateTime.now()),
           ));
     } else {
@@ -105,7 +134,7 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
             coachId: Value(widget.coachId),
             age: Value(int.tryParse(_ageController.text)),
             level: Value(_levelController.text.trim().isEmpty ? null : _levelController.text.trim()),
-            notes: Value(_notesController.text.trim().isEmpty ? null : _notesController.text.trim()),
+            notes: Value(notes),
             updatedAt: Value(DateTime.now()),
           ));
     }
@@ -159,9 +188,33 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _levels.contains(_levelController.text) ? _levelController.text : null,
-                decoration: const InputDecoration(labelText: 'Oyun seviyesi'),
-                items: _levels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                decoration: const InputDecoration(labelText: 'Oyun seviyesi (ITF top)'),
+                items: _levels
+                    .map(
+                      (l) => DropdownMenuItem(
+                        value: l,
+                        child: Row(
+                          children: [
+                            ItfTennisBallAvatar(
+                              level: BallLevel.tryParse(l),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(l),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (v) => setState(() => _levelController.text = v ?? ''),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _groupController,
+                decoration: const InputDecoration(
+                  labelText: 'Grup kodu',
+                  hintText: 'örn. ço-12',
+                ),
               ),
               const SizedBox(height: 8),
               TextField(

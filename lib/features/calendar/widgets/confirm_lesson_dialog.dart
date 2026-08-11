@@ -10,6 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 enum LessonTapAction {
   confirm,
   editTentative,
+  repeatWeekly,
+  changeColor,
+  selectRepresentative,
   editFull,
   delete,
 }
@@ -20,6 +23,7 @@ Future<LessonTapAction?> showLessonActionSheet(
   required Lesson lesson,
 }) {
   final isTentative = LessonStatus.fromString(lesson.status) == LessonStatus.tentative;
+  final isGroup = lesson.type == 'group';
 
   return showModalBottomSheet<LessonTapAction>(
     context: context,
@@ -52,16 +56,45 @@ Future<LessonTapAction?> showLessonActionSheet(
                   onTap: () => Navigator.pop(ctx, LessonTapAction.confirm),
                 ),
                 ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.indigo.shade50,
+                    child: Icon(Icons.repeat, color: Colors.indigo.shade700),
+                  ),
+                  title: const Text('Her hafta tekrarla'),
+                  subtitle: const Text('Aynı gün ve saatte olası ders oluştur'),
+                  onTap: () => Navigator.pop(ctx, LessonTapAction.repeatWeekly),
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.pink.shade50,
+                    child: Icon(Icons.palette_outlined, color: Colors.pink.shade700),
+                  ),
+                  title: const Text('Renk değiştir'),
+                  subtitle: const Text('Olası ders için özel renk seç'),
+                  onTap: () => Navigator.pop(ctx, LessonTapAction.changeColor),
+                ),
+                ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: const Text('Olası dersi düzenle'),
                   onTap: () => Navigator.pop(ctx, LessonTapAction.editTentative),
                 ),
-              ] else
+              ] else ...[
+                if (isGroup)
+                  ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.teal.shade50,
+                      child: Icon(Icons.person_pin_outlined, color: Colors.teal.shade800),
+                    ),
+                    title: const Text('Temsilci seç'),
+                    subtitle: const Text('Grup kodu yerine isim hatırla'),
+                    onTap: () => Navigator.pop(ctx, LessonTapAction.selectRepresentative),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: const Text('Dersi düzenle'),
                   onTap: () => Navigator.pop(ctx, LessonTapAction.editFull),
                 ),
+              ],
               ListTile(
                 leading: Icon(Icons.delete_outline, color: Colors.red.shade700),
                 title: Text('Sil', style: TextStyle(color: Colors.red.shade700)),

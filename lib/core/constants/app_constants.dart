@@ -5,6 +5,12 @@ class AppConstants {
   static const slotDurationMinutes = 60;
   static const privateLessonMaxParticipants = 3;
 
+  /// Kort kiralama başına düşülen kredi (1 saatlik slot).
+  static const courtRentalCreditCost = 1.0;
+
+  /// Test kredi yükleme seçenekleri.
+  static const testCreditAmounts = [5.0, 10.0, 20.0, 50.0];
+
   /// Özel ders fiyat seçenekleri (₺).
   static const List<double> privateLessonPrices = [
     500,
@@ -15,7 +21,8 @@ class AppConstants {
     2000,
   ];
 
-  /// Takvim günü: sabah / öğle / akşam. Öğle varsayılan gizli.
+  /// Takvim günü: sabah / öğle / akşam.
+  /// expandedByDefault = antrenör takvimi; courtExpandedByDefault = kortlar.
   static const List<CalendarTimeBlock> calendarTimeBlocks = [
     CalendarTimeBlock(
       id: 'morning',
@@ -23,6 +30,7 @@ class AppConstants {
       startHour: 8,
       endHour: 13,
       expandedByDefault: true,
+      courtExpandedByDefault: false,
     ),
     CalendarTimeBlock(
       id: 'midday',
@@ -30,6 +38,7 @@ class AppConstants {
       startHour: 13,
       endHour: 17,
       expandedByDefault: false,
+      courtExpandedByDefault: false,
     ),
     CalendarTimeBlock(
       id: 'evening',
@@ -37,6 +46,7 @@ class AppConstants {
       startHour: 17,
       endHour: 24,
       expandedByDefault: true,
+      courtExpandedByDefault: true,
     ),
   ];
 }
@@ -48,6 +58,7 @@ class CalendarTimeBlock {
     required this.startHour,
     required this.endHour,
     required this.expandedByDefault,
+    this.courtExpandedByDefault = false,
   });
 
   final String id;
@@ -57,6 +68,7 @@ class CalendarTimeBlock {
   /// Hariç
   final int endHour;
   final bool expandedByDefault;
+  final bool courtExpandedByDefault;
 
   List<int> get hours =>
       List.generate(endHour - startHour, (i) => startHour + i);

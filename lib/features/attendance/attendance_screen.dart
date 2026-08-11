@@ -39,17 +39,47 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   }
 }
 
-class _CoachAttendanceTab extends ConsumerWidget {
+enum _CoachAttendanceScope { today, all }
+
+class _CoachAttendanceTab extends ConsumerStatefulWidget {
   const _CoachAttendanceTab({required this.coachId});
 
   final String coachId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CoachAttendanceTab> createState() => _CoachAttendanceTabState();
+}
+
+class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
+  _CoachAttendanceScope _scope = _CoachAttendanceScope.today;
+  bool _onlyPending = false;
+  int _reloadToken = 0;
+
+  Future<void> _openAttendance(Lesson lesson) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => TakeAttendanceDialog(
+        lesson: lesson,
+        coachId: widget.coachId,
+      ),
+    );
+    if (saved == true && mounted) {
+      setState(() => _reloadToken++);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final db = ref.watch(databaseProvider);
     final now = DateTime.now();
     final dayStart = DateTime(now.year, now.month, now.day);
-    final rangeEnd = dayStart.add(const Duration(days: 7));
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final rangeStart = _scope == _CoachAttendanceScope.today
+        ? dayStart
+        : dayStart.subtract(const Duration(days: 60));
+    final rangeEnd = _scope == _CoachAttendanceScope.today
+        ? dayEnd
+        : dayStart.add(const Duration(days: 14));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,57 +90,99 @@ class _CoachAttendanceTab extends ConsumerWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'Yalnızca grup derslerinde yoklama alınır — her sporcu için ayrı işaretleyin',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade700,
-                ),
+          child: SegmentedButton<_CoachAttendanceScope>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: _CoachAttendanceScope.today,
+                label: Text('Bugün'),
+              ),
+              ButtonSegment(
+                value: _CoachAttendanceScope.all,
+                label: Text('Tüm yoklamalar'),
+              ),
+            ],
+            selected: {_scope},
+            onSelectionChanged: (s) {
+              setState(() {
+                _scope = s.first;
+                _reloadToken++;
+              });
+            },
           ),
         ),
         const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FilterChip(
+              avatar: Icon(
+                _onlyPending ? Icons.warning_amber_rounded : Icons.pending_actions,
+                size: 18,
+              ),
+              label: const Text('Alınmayanlar'),
+              selected: _onlyPending,
+              onSelected: (v) => setState(() => _onlyPending = v),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
         Expanded(
-          child: FutureBuilder<List<Lesson>>(
-            future: db.getLessonsForCoachInRange(coachId, dayStart.subtract(const Duration(days: 7)), rangeEnd),
+          child: FutureBuilder<(List<Lesson>, Set<String>)>(
+            key: ValueKey('$_scope-$_reloadToken'),
+            future: () async {
+              final lessons = await db.getLessonsForCoachInRange(
+                widget.coachId,
+                rangeStart,
+                rangeEnd,
+              );
+              final group = lessons
+                  .where((l) => !l.isTemplate && l.type == 'group')
+                  .toList()
+                ..sort((a, b) => _scope == _CoachAttendanceScope.today
+                    ? a.startTime.compareTo(b.startTime)
+                    : b.startTime.compareTo(a.startTime));
+              final atts = await db.getAttendancesForLessons(
+                group.map((l) => l.id).toList(),
+              );
+              final taken = {for (final a in atts) a.lessonId};
+              return (group, taken);
+            }(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final lessons = (snapshot.data ?? [])
-                  .where((l) => !l.isTemplate && l.type == 'group')
-                  .toList()
-                ..sort((a, b) => b.startTime.compareTo(a.startTime));
+              final data = snapshot.data;
+              if (data == null) {
+                return const Center(child: Text('Yoklama listesi yüklenemedi'));
+              }
+              var (lessons, takenIds) = data;
+              if (_onlyPending) {
+                lessons = lessons.where((l) => !takenIds.contains(l.id)).toList();
+              }
 
               if (lessons.isEmpty) {
-                return const Center(child: Text('Yoklama alınacak grup dersi bulunamadı'));
+                final msg = _onlyPending
+                    ? (_scope == _CoachAttendanceScope.today
+                        ? 'Bugün alınmayan yoklama yok'
+                        : 'Alınmayan yoklama yok')
+                    : (_scope == _CoachAttendanceScope.today
+                        ? 'Bugün grup dersi yok'
+                        : 'Grup dersi bulunamadı');
+                return Center(child: Text(msg));
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 itemCount: lessons.length,
                 itemBuilder: (context, index) {
                   final lesson = lessons[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: const Icon(Icons.groups, size: 20),
-                      ),
-                      title: Text(lesson.title ?? 'Grup'),
-                      subtitle: Text(
-                        '${AppDateFormat.dateTime(lesson.startTime)} · ${lesson.maxParticipants} sporcu',
-                      ),
-                      trailing: const Icon(Icons.fact_check_outlined),
-                      onTap: () async {
-                        await showDialog<bool>(
-                          context: context,
-                          builder: (_) => TakeAttendanceDialog(
-                            lesson: lesson,
-                            coachId: coachId,
-                          ),
-                        );
-                      },
-                    ),
+                  final taken = takenIds.contains(lesson.id);
+                  return _CoachLessonAttendanceCard(
+                    lesson: lesson,
+                    taken: taken,
+                    onOpen: () => _openAttendance(lesson),
                   );
                 },
               );
@@ -118,6 +190,103 @@ class _CoachAttendanceTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CoachLessonAttendanceCard extends StatelessWidget {
+  const _CoachLessonAttendanceCard({
+    required this.lesson,
+    required this.taken,
+    required this.onOpen,
+  });
+
+  final Lesson lesson;
+  final bool taken;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusBg = taken ? Colors.green.shade50 : Colors.orange.shade50;
+    final statusFg = taken ? Colors.green.shade800 : Colors.orange.shade900;
+    final statusIcon = taken ? Icons.check_circle : Icons.radio_button_unchecked;
+    final statusLabel = taken ? 'Alındı' : 'Alınmadı';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: const Icon(Icons.groups, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lesson.title ?? 'Grup',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${AppDateFormat.dateTime(lesson.startTime)} · ${lesson.maxParticipants} sporcu',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey.shade700,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusFg),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: statusFg,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (!taken)
+                FilledButton(
+                  onPressed: onOpen,
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text('Al'),
+                )
+              else
+                IconButton(
+                  tooltip: 'Düzenle',
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
