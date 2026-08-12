@@ -14,24 +14,21 @@ class WeekSlotCell extends StatelessWidget {
   final CourtSlot slot;
   final VoidCallback? onTap;
 
-  /// 2+ kişilik özelde: ah-os-al; tek kişide tam ad.
-  static String compactPrivateLabel(CourtSlot slot) {
-    final raw = slot.participantNames ?? slot.primaryLabel;
-    if (raw == null || raw.isEmpty) return '';
-    final parts = raw
-        .split(RegExp(r'[-·]'))
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return raw;
-    if (parts.length == 1) {
-      final p = parts.first;
-      return p.length <= 6 ? p : p.substring(0, 6);
+  static List<String> _lessonLines(CourtSlot slot) {
+    if (slot.isGroupLesson) {
+      return ScheduleLessonSlot.groupLines(
+        slot.primaryLabel ?? 'Grup',
+        slot.participantCount,
+      );
     }
-    return parts.map((p) {
-      final lower = p.toLowerCase();
-      return lower.length <= 2 ? lower : lower.substring(0, 2);
-    }).join('-');
+    final raw = slot.participantNames ?? slot.primaryLabel ?? '';
+    final names = raw
+        .split(RegExp(r'[-·,]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty);
+    final lines = ScheduleLessonSlot.privateLines(names);
+    if (lines.isNotEmpty) return lines;
+    return [slot.primaryLabel ?? 'Özel'];
   }
 
   @override
@@ -40,16 +37,12 @@ class WeekSlotCell extends StatelessWidget {
         (slot.status == SlotStatus.available || slot.status == SlotStatus.blocked);
 
     if (slot.status == SlotStatus.lesson) {
-      final primary = slot.isPrivateLesson
-          ? compactPrivateLabel(slot)
-          : (slot.primaryLabel ?? '');
       return SizedBox.expand(
         child: ScheduleLessonSlot(
           coachId: slot.coachId,
           isGroup: slot.isGroupLesson,
           isTentative: false,
-          primary: primary,
-          groupCount: slot.isGroupLesson ? slot.participantCount : null,
+          lines: _lessonLines(slot),
           compact: true,
           onTap: canTap ? onTap : null,
           enabled: canTap,

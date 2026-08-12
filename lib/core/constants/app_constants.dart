@@ -29,7 +29,7 @@ class AppConstants {
       label: 'Sabah',
       startHour: 8,
       endHour: 13,
-      expandedByDefault: true,
+      expandedByDefault: false,
       courtExpandedByDefault: false,
     ),
     CalendarTimeBlock(

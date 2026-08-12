@@ -18,6 +18,23 @@ class CourtSlotCell extends StatelessWidget {
   final VoidCallback? onTap;
   final bool compact;
 
+  static List<String> _lessonLines(CourtSlot slot) {
+    if (slot.isGroupLesson) {
+      return ScheduleLessonSlot.groupLines(
+        slot.primaryLabel ?? 'Grup',
+        slot.participantCount,
+      );
+    }
+    final raw = slot.participantNames ?? slot.primaryLabel ?? '';
+    final names = raw
+        .split(RegExp(r'[-·,]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty);
+    final lines = ScheduleLessonSlot.privateLines(names);
+    if (lines.isNotEmpty) return lines;
+    return [slot.primaryLabel ?? 'Özel'];
+  }
+
   @override
   Widget build(BuildContext context) {
     final canTap = onTap != null &&
@@ -38,9 +55,7 @@ class CourtSlotCell extends StatelessWidget {
           coachId: slot.coachId,
           isGroup: slot.isGroupLesson,
           isTentative: false,
-          primary: slot.primaryLabel ?? '',
-          secondary: compact ? null : slot.secondaryLabel,
-          groupCount: slot.isGroupLesson ? slot.participantCount : null,
+          lines: _lessonLines(slot),
           compact: compact,
           onTap: canTap ? onTap : null,
           enabled: canTap,
@@ -97,7 +112,6 @@ class CourtSlotCell extends StatelessWidget {
     );
   }
 
-  /// Grid hücresini doldurur; Tooltip child'ının boyutu olmasını sağlar.
   Widget _tooltip(String message, Widget child) {
     return Tooltip(
       message: message,

@@ -3,6 +3,7 @@ import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/theme/app_theme.dart';
 import 'package:crm_app/features/auth/login_screen.dart';
 import 'package:crm_app/features/shell/app_shell.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +19,7 @@ class EtaCrmApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'ETA Tenis Akademisi',
+      title: 'etacrm v0.2.1',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       locale: const Locale('tr', 'TR'),
@@ -41,9 +42,13 @@ class _PreviewShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final content = child ?? const SizedBox.shrink();
+
+    // Gerçek telefonda tam ekran; önizleme çerçevesi yalnızca web/masaüstü geliştirmede.
+    if (!kIsWeb) return content;
+
     final layout = ref.watch(previewLayoutProvider);
     final isMobile = layout == PreviewLayout.mobile;
-    final content = child ?? const SizedBox.shrink();
 
     return Stack(
       fit: StackFit.expand,
@@ -52,30 +57,38 @@ class _PreviewShell extends ConsumerWidget {
           ColoredBox(
             color: const Color(0xFF1A1A1A),
             child: Center(
-              child: Container(
-                width: kMobilePreviewWidth,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey.shade700, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxH = constraints.maxHeight - 32;
+                  final height = kMobilePreviewHeight.clamp(320.0, maxH);
+                  final width = (height * kMobilePreviewWidth / kMobilePreviewHeight)
+                      .clamp(280.0, kMobilePreviewWidth);
+
+                  return Container(
+                    width: width,
+                    height: height,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(color: Colors.grey.shade800, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: MediaQuery(
-                  data: MediaQuery.of(context).copyWith(
-                    size: Size(
-                      kMobilePreviewWidth,
-                      MediaQuery.sizeOf(context).height,
+                    clipBehavior: Clip.antiAlias,
+                    child: MediaQuery(
+                      data: MediaQuery.of(context).copyWith(
+                        size: Size(width, height),
+                        padding: const EdgeInsets.only(top: 12, bottom: 8),
+                      ),
+                      child: content,
                     ),
-                  ),
-                  child: content,
-                ),
+                  );
+                },
               ),
             ),
           )

@@ -1,5 +1,6 @@
 import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/enums/user_role.dart';
+import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/widgets/eta_logo.dart';
 import 'package:crm_app/features/attendance/attendance_screen.dart';
@@ -18,8 +19,17 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  /// Antrenör: 0 Öğrenciler, 1 Yoklama, 2 Takvim (varsayılan), 3 Kortlar, 4 Muhasebe
+  /// 0 Öğrenciler, 1 Yoklama, 2 Takvim (varsayılan), 3 Kortlar, 4 Muhasebe
   int _index = 2;
+  String? _adminSelectedCoachId;
+
+  static const _tabTitles = [
+    'Öğrenciler',
+    'Yoklama',
+    'Takvim',
+    'Kortlar',
+    'Muhasebe',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -28,15 +38,20 @@ class _AppShellState extends ConsumerState<AppShell> {
     final user = auth.user!;
     final narrow = MediaQuery.sizeOf(context).width < 420;
 
-    // Antrenör ve üye akışları aktif.
     if (role == UserRole.athlete) {
       return _MemberShell(user: user);
     }
 
-    if (role != UserRole.coach) {
+    if (role == UserRole.parent) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('ETA Tenis'),
+          title: Row(
+            children: [
+              EtaLogo(height: narrow ? 26 : 32, onDark: true),
+              const SizedBox(width: 10),
+              const Text('Veli'),
+            ],
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.logout),
@@ -48,7 +63,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'Bu rol için panel yakında gelecek.\nAntrenör veya üye girişi ile devam edin.',
+              'Veli paneli yakında gelecek.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -56,87 +71,128 @@ class _AppShellState extends ConsumerState<AppShell> {
       );
     }
 
-    final pages = <Widget>[
-      StudentsScreen(coachId: user.id),
-      AttendanceScreen(role: role, userId: user.id),
-      CoachCalendarScreen(coachId: user.id),
-      CourtManagementScreen(role: role, userId: user.id),
-      PaymentsScreen(role: role, userId: user.id),
-    ];
+    final isAdmin = role == UserRole.admin;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: narrow ? 8 : null,
-        title: Row(
-          children: [
-            EtaLogo(
-              height: narrow ? 26 : 32,
-              onDark: true,
-            ),
-            if (!narrow) ...[
-              const SizedBox(width: 10),
-              const Flexible(
-                child: Text(
-                  'ETA Tenis',
-                  overflow: TextOverflow.ellipsis,
+    return FutureBuilder<List<User>>(
+      future: isAdmin
+          ? ref.read(databaseProvider).getUsersByRole('coach')
+          : Future.value(const <User>[]),
+      builder: (context, coachSnap) {
+        final coaches = [...(coachSnap.data ?? [])]
+          ..sort((a, b) => a.name.compareTo(b.name));
+        final selectedCoachId = isAdmin
+            ? (_adminSelectedCoachId ??
+                (coaches.isNotEmpty ? coaches.first.id : user.id))
+            : user.id;
+
+        final pages = <Widget>[
+          StudentsScreen(coachId: selectedCoachId),
+          AttendanceScreen(role: role, userId: user.id),
+          CoachCalendarScreen(coachId: selectedCoachId),
+          CourtManagementScreen(role: role, userId: user.id),
+          PaymentsScreen(role: role, userId: user.id),
+        ];
+
+        return Scaffold(
+          appBar: AppBar(
+            titleSpacing: narrow ? 8 : null,
+            title: Row(
+              children: [
+                EtaLogo(
+                  height: narrow ? 26 : 32,
+                  onDark: true,
                 ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          if (!narrow)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Chip(
-                backgroundColor: Colors.white.withValues(alpha: 0.12),
-                side: BorderSide.none,
-                labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                avatar: CircleAvatar(
-                  backgroundColor: const Color(0xFFB8D600),
+                const SizedBox(width: 10),
+                Flexible(
                   child: Text(
-                    user.name.characters.first,
-                    style: const TextStyle(
-                      color: Color(0xFF0B1C2C),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                    _tabTitles[_index],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              if (isAdmin && coaches.isNotEmpty && (_index == 0 || _index == 2))
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCoachId,
+                      dropdownColor: const Color(0xFF1A2F42),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      iconEnabledColor: Colors.white,
+                      items: [
+                        for (final c in coaches)
+                          DropdownMenuItem(
+                            value: c.id,
+                            child: Text(
+                              c.name.split(' ').first,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setState(() => _adminSelectedCoachId = v);
+                      },
                     ),
                   ),
                 ),
-                label: Text(user.name),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: CircleAvatar(
-                radius: 14,
-                backgroundColor: const Color(0xFFB8D600),
-                child: Text(
-                  user.name.characters.first,
-                  style: const TextStyle(
-                    color: Color(0xFF0B1C2C),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+              if (!narrow)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Chip(
+                    backgroundColor: Colors.white.withValues(alpha: 0.12),
+                    side: BorderSide.none,
+                    labelStyle:
+                        const TextStyle(color: Colors.white, fontSize: 12),
+                    avatar: CircleAvatar(
+                      backgroundColor: const Color(0xFFB8D600),
+                      child: Text(
+                        user.name.characters.first,
+                        style: const TextStyle(
+                          color: Color(0xFF0B1C2C),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    label: Text(isAdmin ? 'Yönetici' : user.name),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(0xFFB8D600),
+                    child: Text(
+                      user.name.characters.first,
+                      style: const TextStyle(
+                        color: Color(0xFF0B1C2C),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Çıkış',
+                onPressed: () => ref.read(authProvider.notifier).logout(),
               ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Çıkış',
-            onPressed: () => ref.read(authProvider.notifier).logout(),
+            ],
           ),
-        ],
-      ),
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar: _CoachBottomNav(
-        index: _index,
-        onChanged: (i) => setState(() => _index = i),
-      ),
+          body: IndexedStack(
+            index: _index,
+            children: pages,
+          ),
+          bottomNavigationBar: _CoachBottomNav(
+            index: _index,
+            onChanged: (i) => setState(() => _index = i),
+          ),
+        );
+      },
     );
   }
 }
@@ -157,12 +213,10 @@ class _MemberShell extends ConsumerWidget {
         title: Row(
           children: [
             EtaLogo(height: narrow ? 26 : 32, onDark: true),
-            if (!narrow) ...[
-              const SizedBox(width: 10),
-              const Flexible(
-                child: Text('Kort Kiralama', overflow: TextOverflow.ellipsis),
-              ),
-            ],
+            const SizedBox(width: 10),
+            const Flexible(
+              child: Text('Kortlar', overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         actions: [
@@ -333,7 +387,6 @@ class _CenterCalendarButton extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Sabit boyut: layout kayması yok; sadece renk / gölge animasyonu.
           SizedBox(
             width: 54,
             height: 54,

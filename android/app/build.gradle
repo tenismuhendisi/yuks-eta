@@ -41,7 +41,8 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.crmapp.crm_app"
+        // Eski crm_app paketinden ayrı — telefonda yan yana eski sürümle karışmaz.
+        applicationId "com.etatenis.etacrm"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()

@@ -25,7 +25,7 @@ class _DemoAccount {
 const _demoAccounts = [
   _DemoAccount(
     role: UserRole.coach,
-    email: 'elif.aktus@eta.com',
+    email: 'elif.a@eta.com',
     password: 'coach123',
     icon: Icons.sports,
     label: 'Antrenör',
@@ -43,7 +43,6 @@ const _demoAccounts = [
     password: 'admin123',
     icon: Icons.admin_panel_settings_outlined,
     label: 'Yönetici',
-    enabled: false,
   ),
   _DemoAccount(
     role: UserRole.parent,
@@ -63,11 +62,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'elif.aktus@eta.com');
+  final _emailController = TextEditingController(text: 'elif.a@eta.com');
   final _passwordController = TextEditingController(text: 'coach123');
   bool _loading = false;
   String? _error;
-  String? _selectedDemoEmail = 'elif.aktus@eta.com';
+  String? _selectedDemoEmail = 'elif.a@eta.com';
 
   @override
   void dispose() {
@@ -98,7 +97,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (error == null) {
       final role = ref.read(authProvider).role;
-      if (role != UserRole.coach && role != UserRole.athlete) {
+      if (role != UserRole.coach &&
+          role != UserRole.athlete &&
+          role != UserRole.admin) {
         ref.read(authProvider.notifier).logout();
         setState(() {
           _loading = false;
@@ -117,7 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String get _subtitle {
     final demo = _demoAccounts.where((a) => a.email == _selectedDemoEmail).firstOrNull;
     if (demo != null && demo.enabled) return '${demo.label} Girişi';
-    return 'Antrenör veya üye girişi';
+    return 'Antrenör, üye veya yönetici girişi';
   }
 
   @override
@@ -134,14 +135,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const EtaLogo(height: 88),
                 const SizedBox(height: 16),
                 Text(
-                  _subtitle,
+                  '$_subtitle · v0.2.1',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Colors.grey.shade700,
                         fontWeight: FontWeight.w600,
                       ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 8),
+                Text(
+                  'BUILD 5 · KİRALAMA AÇIK',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                      ),
+                ),
+                const SizedBox(height: 24),
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -220,7 +231,7 @@ class _DemoAccounts extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                'Antrenör ve üye girişi aktif',
+                'Antrenör, üye ve yönetici girişi aktif',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey.shade600,
                     ),

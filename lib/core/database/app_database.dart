@@ -151,6 +151,46 @@ class LessonAttendances extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Haftalık genel plan: gün/kort/saat → antrenör hakkı.
+class WeeklyCourtRights extends Table {
+  TextColumn get id => text()();
+  /// DateTime.monday = 1 … saturday = 6
+  IntColumn get weekday => integer()();
+  TextColumn get courtId => text().references(Courts, #id)();
+  IntColumn get hour => integer()();
+  TextColumn get coachId => text().nullable().references(Users, #id)();
+  TextColumn get label => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {weekday, courtId, hour},
+      ];
+}
+
+/// Genel plan değişiklik talepleri (antrenör → admin).
+class PlanChangeRequests extends Table {
+  TextColumn get id => text()();
+  TextColumn get requesterId => text().references(Users, #id)();
+  IntColumn get weekday => integer()();
+  TextColumn get courtId => text().references(Courts, #id)();
+  IntColumn get hour => integer()();
+  TextColumn get fromCoachId => text().nullable().references(Users, #id)();
+  TextColumn get toCoachId => text().nullable().references(Users, #id)();
+  TextColumn get note => text().nullable()();
+  /// pending | approved | rejected
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+  TextColumn get resolvedById => text().nullable().references(Users, #id)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(tables: [
   Users,
   Courts,
@@ -163,12 +203,14 @@ class LessonAttendances extends Table {
   StudentProfiles,
   ParentAthleteLinks,
   LessonAttendances,
+  WeeklyCourtRights,
+  PlanChangeRequests,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -204,6 +246,39 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(courtRentals, courtRentals.createdAt);
             await m.createTable(creditTransactions);
             await SeedData.seedMemberCredits(this);
+          }
+          if (from < 9) {
+            await SeedData.seedExtraDemoGroups(this);
+          }
+          if (from < 10) {
+            await SeedData.syncPrivateFocusNotes(this);
+          }
+          if (from < 11) {
+            await SeedData.syncPrivateLessonBallLevels(this);
+          }
+          if (from < 12) {
+            await m.createTable(weeklyCourtRights);
+            await m.createTable(planChangeRequests);
+            await SeedData.seedGeneralPlan(this);
+          }
+          if (from < 13) {
+            await SeedData.seedGeneralPlan(this);
+          }
+          if (from < 14) {
+            await SeedData.syncCoachNames(this);
+            await SeedData.seedGeneralPlan(this, replace: true);
+          }
+          if (from < 15) {
+            await SeedData.seedGeneralPlan(this, replace: true);
+          }
+          if (from < 16) {
+            await SeedData.seedGeneralPlan(this, replace: true);
+            await SeedData.seedCurrentPlanFromGeneralPlan(this, replace: true);
+          }
+          if (from < 17) {
+            await SeedData.seedGeneralPlan(this, replace: true);
+            await SeedData.seedYukselRealisticPeople(this);
+            await SeedData.seedCurrentPlanFromGeneralPlan(this, replace: true);
           }
         },
       );
@@ -262,6 +337,10 @@ class AppDatabase extends _$AppDatabase {
           ..where((c) => c.isActive.equals(true))
           ..orderBy([(c) => OrderingTerm.asc(c.sortOrder)]))
         .get();
+  }
+
+  Future<List<Court>> getAllCourts() {
+    return (select(courts)..orderBy([(c) => OrderingTerm.asc(c.sortOrder)])).get();
   }
 
   Future<void> insertCourt(CourtsCompanion court) => into(courts).insert(court);
@@ -513,6 +592,46 @@ class AppDatabase extends _$AppDatabase {
     return (select(lessonParticipants)..where((p) => p.lessonId.isIn(lessonIds))).get();
   }
 
+  /// Antrenörün aktif özel ders kümeleri (aynı katılımcı seti bir kez).
+  Future<List<List<String>>> getPrivateLessonClusters(String coachId) async {
+    final now = DateTime.now();
+    final from = now.subtract(const Duration(days: 7));
+    final to = now.add(const Duration(days: 21));
+    var privateLessons = await (select(lessons)
+          ..where((l) => l.coachId.equals(coachId))
+          ..where((l) => l.type.equals('private'))
+          ..where((l) => l.isTemplate.equals(false))
+          ..where((l) => l.startTime.isSmallerThanValue(to))
+          ..where((l) => l.endTime.isBiggerThanValue(from)))
+        .get();
+    if (privateLessons.isEmpty) {
+      privateLessons = await (select(lessons)
+            ..where((l) => l.coachId.equals(coachId))
+            ..where((l) => l.type.equals('private'))
+            ..where((l) => l.isTemplate.equals(false)))
+          .get();
+    }
+    if (privateLessons.isEmpty) return [];
+
+    final parts = await getParticipantsForLessons(
+      privateLessons.map((l) => l.id).toList(),
+    );
+    final byLesson = <String, List<String>>{};
+    for (final p in parts) {
+      byLesson.putIfAbsent(p.lessonId, () => []).add(p.userId);
+    }
+
+    final seen = <String>{};
+    final clusters = <List<String>>[];
+    for (final lesson in privateLessons) {
+      final ids = <String>[...(byLesson[lesson.id] ?? const <String>[])]..sort();
+      if (ids.isEmpty) continue;
+      final key = ids.join('|');
+      if (seen.add(key)) clusters.add(ids);
+    }
+    return clusters;
+  }
+
   Future<void> insertParticipant(LessonParticipantsCompanion p) =>
       into(lessonParticipants).insert(p);
 
@@ -614,6 +733,10 @@ class AppDatabase extends _$AppDatabase {
     return (select(studentProfiles)..where((s) => s.coachId.equals(coachId))).watch();
   }
 
+  Future<List<StudentProfile>> getStudentsForCoach(String coachId) {
+    return (select(studentProfiles)..where((s) => s.coachId.equals(coachId))).get();
+  }
+
   Future<void> upsertStudentProfile(StudentProfilesCompanion profile) =>
       into(studentProfiles).insertOnConflictUpdate(profile);
 
@@ -641,5 +764,99 @@ class AppDatabase extends _$AppDatabase {
     final ids = links.map((l) => l.athleteId).toList();
     return (select(users)..where((u) => u.id.isIn(ids))).get();
   }
+
+  // --- Weekly Court Rights (Genel Plan) ---
+
+  Stream<List<WeeklyCourtRight>> watchWeeklyCourtRights() {
+    return select(weeklyCourtRights).watch();
+  }
+
+  Future<List<WeeklyCourtRight>> getWeeklyCourtRights() {
+    return select(weeklyCourtRights).get();
+  }
+
+  Future<void> upsertWeeklyCourtRight(WeeklyCourtRightsCompanion row) =>
+      into(weeklyCourtRights).insertOnConflictUpdate(row);
+
+  Future<void> clearWeeklyCourtRight({
+    required int weekday,
+    required String courtId,
+    required int hour,
+  }) {
+    return (delete(weeklyCourtRights)
+          ..where((r) => r.weekday.equals(weekday))
+          ..where((r) => r.courtId.equals(courtId))
+          ..where((r) => r.hour.equals(hour)))
+        .go();
+  }
+
+  Future<void> setWeeklyCourtRight({
+    required int weekday,
+    required String courtId,
+    required int hour,
+    String? coachId,
+    String? label,
+  }) async {
+    final id = 'wcr-$weekday-$courtId-$hour';
+    if (coachId == null || coachId.isEmpty) {
+      await clearWeeklyCourtRight(weekday: weekday, courtId: courtId, hour: hour);
+      return;
+    }
+    await upsertWeeklyCourtRight(
+      WeeklyCourtRightsCompanion.insert(
+        id: id,
+        weekday: weekday,
+        courtId: courtId,
+        hour: hour,
+        coachId: Value(coachId),
+        label: Value(label),
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  // --- Plan Change Requests ---
+
+  Stream<List<PlanChangeRequest>> watchPendingPlanChangeRequests() {
+    return (select(planChangeRequests)
+          ..where((r) => r.status.equals('pending'))
+          ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
+        .watch();
+  }
+
+  Future<void> insertPlanChangeRequest(PlanChangeRequestsCompanion row) =>
+      into(planChangeRequests).insert(row);
+
+  Future<void> resolvePlanChangeRequest({
+    required String id,
+    required String status,
+    required String resolvedById,
+    required bool applyToPlan,
+  }) async {
+    final req = await (select(planChangeRequests)..where((r) => r.id.equals(id)))
+        .getSingleOrNull();
+    if (req == null) return;
+
+    await (update(planChangeRequests)..where((r) => r.id.equals(id))).write(
+      PlanChangeRequestsCompanion(
+        status: Value(status),
+        resolvedAt: Value(DateTime.now()),
+        resolvedById: Value(resolvedById),
+      ),
+    );
+
+    if (applyToPlan && status == 'approved') {
+      await setWeeklyCourtRight(
+        weekday: req.weekday,
+        courtId: req.courtId,
+        hour: req.hour,
+        coachId: req.toCoachId,
+        label: null,
+      );
+    }
+  }
+
+  Future<void> updateCourt(String id, CourtsCompanion court) =>
+      (update(courts)..where((c) => c.id.equals(id))).write(court);
 }
 

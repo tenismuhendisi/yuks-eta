@@ -1,7 +1,7 @@
 name: crm_app
 description: ETA Tenis Akademisi CRM uygulamasi
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.2.1+5
 
 environment:
   sdk: '>=3.0.3 <4.0.0'

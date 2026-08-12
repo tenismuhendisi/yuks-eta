@@ -1,6 +1,7 @@
 import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/enums/ball_level.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
+import 'package:crm_app/core/utils/student_notes.dart';
 import 'package:crm_app/core/widgets/itf_tennis_ball.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
@@ -37,26 +38,11 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
 
   static const _levels = BallLevel.labels;
 
-  static String? _groupFromNotes(String? notes) {
-    if (notes == null || notes.isEmpty) return null;
-    return RegExp(r'Grup:\s*([^\s,;]+)', caseSensitive: false).firstMatch(notes)?.group(1);
-  }
-
-  static String? _notesWithoutGroup(String? notes) {
-    if (notes == null || notes.isEmpty) return null;
-    final cleaned = notes
-        .replaceAll(RegExp(r'Grup:\s*[^\s,;]+\s*', caseSensitive: false), '')
-        .trim();
-    return cleaned.isEmpty ? null : cleaned;
-  }
-
   String? _composeNotes() {
-    final group = _groupController.text.trim();
-    final rest = _notesController.text.trim();
-    if (group.isEmpty && rest.isEmpty) return null;
-    if (group.isEmpty) return rest;
-    if (rest.isEmpty) return 'Grup: $group';
-    return 'Grup: $group · $rest';
+    return StudentNotes.compose(
+      group: _groupController.text,
+      rest: _notesController.text,
+    );
   }
 
   @override
@@ -69,8 +55,8 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
       _ageController.text = widget.existingProfile!.age?.toString() ?? '';
       _levelController.text =
           BallLevel.normalizeLabel(widget.existingProfile!.level);
-      _groupController.text = _groupFromNotes(widget.existingProfile!.notes) ?? '';
-      _notesController.text = _notesWithoutGroup(widget.existingProfile!.notes) ?? '';
+      _groupController.text = StudentNotes.groupCode(widget.existingProfile!.notes) ?? '';
+      _notesController.text = StudentNotes.withoutGroup(widget.existingProfile!.notes) ?? '';
     } else {
       _loadAvailableAthletes();
     }
@@ -144,25 +130,39 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dialogW =
+        (MediaQuery.sizeOf(context).width - 48).clamp(240.0, 400.0);
+
     return AlertDialog(
       title: Text(_isEdit ? 'Öğrenciyi Düzenle' : 'Öğrenci Ekle'),
       content: SizedBox(
-        width: 400,
+        width: dialogW,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!_isEdit) ...[
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedAthleteId,
                   decoration: const InputDecoration(labelText: 'Sporcu seç'),
                   items: _availableAthletes
-                      .map((a) => DropdownMenuItem(value: a.id, child: Text('${a.name} (${a.email})')))
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Text(
+                            '${a.name} (${a.email})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (v) {
                     setState(() {
                       _selectedAthleteId = v;
-                      final athlete = _availableAthletes.firstWhere((a) => a.id == v);
+                      final athlete =
+                          _availableAthletes.firstWhere((a) => a.id == v);
                       _nameController.text = athlete.name;
                       _emailController.text = athlete.email;
                     });
@@ -187,8 +187,12 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _levels.contains(_levelController.text) ? _levelController.text : null,
-                decoration: const InputDecoration(labelText: 'Oyun seviyesi (ITF top)'),
+                isExpanded: true,
+                value: _levels.contains(_levelController.text)
+                    ? _levelController.text
+                    : null,
+                decoration:
+                    const InputDecoration(labelText: 'Oyun seviyesi (ITF top)'),
                 items: _levels
                     .map(
                       (l) => DropdownMenuItem(
@@ -200,20 +204,27 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
                               size: 22,
                             ),
                             const SizedBox(width: 10),
-                            Text(l),
+                            Expanded(
+                              child: Text(
+                                l,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     )
                     .toList(),
-                onChanged: (v) => setState(() => _levelController.text = v ?? ''),
+                onChanged: (v) =>
+                    setState(() => _levelController.text = v ?? ''),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _groupController,
                 decoration: const InputDecoration(
                   labelText: 'Grup kodu',
-                  hintText: 'örn. ço-12',
+                  hintText: 'örn. Alt-1, Yet-43, Luna',
                 ),
               ),
               const SizedBox(height: 8),
@@ -227,11 +238,17 @@ class _StudentFormDialogState extends ConsumerState<StudentFormDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal')),
         FilledButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Kaydet'),
         ),
       ],

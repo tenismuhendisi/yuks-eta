@@ -5,7 +5,7 @@ import 'package:crm_app/core/enums/lesson_status.dart';
 import 'package:crm_app/core/enums/lesson_type.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
-import 'package:crm_app/core/theme/coach_colors.dart';
+import 'package:crm_app/core/utils/court_locations.dart';
 import 'package:crm_app/core/widgets/schedule_lesson_slot.dart';
 import 'package:crm_app/features/calendar/widgets/confirm_lesson_dialog.dart';
 import 'package:crm_app/features/calendar/widgets/lesson_form_dialog.dart';
@@ -29,6 +29,12 @@ enum CalendarDaySpan {
   fullWeek,
 }
 
+enum CalendarOverlayMode {
+  none,
+  generalPlan,
+  currentPlan,
+}
+
 class CoachCalendarScreen extends ConsumerStatefulWidget {
   const CoachCalendarScreen({super.key, required this.coachId});
 
@@ -42,6 +48,8 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
   late DateTime _weekStart;
   late CalendarDaySpan _daySpan;
   late Set<String> _expandedBlocks;
+  CalendarOverlayMode _overlayMode = CalendarOverlayMode.none;
+  Set<String> _selectedCourtIds = {...CourtLocations.sogutonuIds};
 
   @override
   void initState() {
@@ -61,6 +69,30 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
         _expandedBlocks.remove(id);
       } else {
         _expandedBlocks.add(id);
+      }
+    });
+  }
+
+  void _toggleLocationGroup(Set<String> groupIds) {
+    setState(() {
+      final allSelected = groupIds.every(_selectedCourtIds.contains);
+      if (allSelected) {
+        final next = {..._selectedCourtIds}..removeAll(groupIds);
+        if (next.isEmpty) return;
+        _selectedCourtIds = next;
+      } else {
+        _selectedCourtIds = {..._selectedCourtIds, ...groupIds};
+      }
+    });
+  }
+
+  void _toggleCourt(String courtId) {
+    setState(() {
+      if (_selectedCourtIds.contains(courtId)) {
+        if (_selectedCourtIds.length <= 1) return;
+        _selectedCourtIds = {..._selectedCourtIds}..remove(courtId);
+      } else {
+        _selectedCourtIds = {..._selectedCourtIds, courtId};
       }
     });
   }
@@ -528,56 +560,76 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              _LegendSwatch(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F6F4),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFFD7E3DB)),
-                  ),
-                ),
+          child: SegmentedButton<CalendarOverlayMode>(
+            segments: const [
+              ButtonSegment(
+                value: CalendarOverlayMode.none,
+                label: Text('Varsayılan', style: TextStyle(fontSize: 11)),
               ),
-              const SizedBox(width: 4),
-              Text('Boş', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              const SizedBox(width: 10),
-              _LegendSwatch(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Row(
-                    children: [
-                      Container(width: 3, color: CoachColors.forCoach(widget.coachId)),
-                      Expanded(
-                        child: ColoredBox(
-                          color: CoachColors.fill(widget.coachId),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ButtonSegment(
+                value: CalendarOverlayMode.generalPlan,
+                label: Text('Genel plan', style: TextStyle(fontSize: 11)),
               ),
-              const SizedBox(width: 4),
-              Text('Grup', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              const SizedBox(width: 10),
-              _LegendSwatch(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: CoachColors.fill(widget.coachId),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+              ButtonSegment(
+                value: CalendarOverlayMode.currentPlan,
+                label: Text('Güncel plan', style: TextStyle(fontSize: 11)),
               ),
-              const SizedBox(width: 4),
-              Text('Özel', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              const Spacer(),
-              Text('Olası = kesikli', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
             ],
+            selected: {_overlayMode},
+            onSelectionChanged: (s) => setState(() => _overlayMode = s.first),
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
         ),
+        if (_overlayMode != CalendarOverlayMode.none) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 0,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilterChip(
+                  label: const Text('Söğütönü', style: TextStyle(fontSize: 11)),
+                  selected: CourtLocations.sogutonuIds.every(_selectedCourtIds.contains),
+                  onSelected: (_) => _toggleLocationGroup(CourtLocations.sogutonuIds),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: EdgeInsets.zero,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+                FilterChip(
+                  label: const Text('Kent Ormanı', style: TextStyle(fontSize: 11)),
+                  selected: CourtLocations.kentOrmaniIds.every(_selectedCourtIds.contains),
+                  onSelected: (_) => _toggleLocationGroup(CourtLocations.kentOrmaniIds),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: EdgeInsets.zero,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+                for (final id in CourtLocations.orderedIds)
+                  FilterChip(
+                    label: Text(
+                      CourtLocations.shortLabel(id),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    selected: _selectedCourtIds.contains(id),
+                    onSelected: (_) => _toggleCourt(id),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         Expanded(
           child: FutureBuilder<_CalendarLoad>(
@@ -587,6 +639,7 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
               final lessons = data?.lessons ?? const <Lesson>[];
               final names = data?.firstNamesByLessonId ?? const <String, List<String>>{};
               final reps = data?.repFirstNameByLessonId ?? const <String, String>{};
+              final fullSlots = data?.allCourtsFullKeys ?? const <String>{};
 
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -595,6 +648,7 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
                     lessons: lessons,
                     firstNamesByLessonId: names,
                     repFirstNameByLessonId: reps,
+                    allCourtsFullKeys: fullSlots,
                     totalWidth: constraints.maxWidth,
                     expandedBlocks: _expandedBlocks,
                     onToggleBlock: _toggleBlock,
@@ -648,10 +702,33 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
       if (n != null) reps[l.id] = firstName(n);
     }
 
+    final hours = AppConstants.calendarTimeBlocks.expand((b) => b.hours);
+    Set<String> fullKeys = {};
+    switch (_overlayMode) {
+      case CalendarOverlayMode.none:
+        break;
+      case CalendarOverlayMode.generalPlan:
+        final rights = await db.getWeeklyCourtRights();
+        fullKeys = CourtAvailabilityService.slotsWhereAllCourtsClaimedInGeneralPlan(
+          days: days,
+          hours: hours,
+          courtIds: _selectedCourtIds,
+          rights: rights,
+        );
+      case CalendarOverlayMode.currentPlan:
+        final svc = ref.read(courtAvailabilityServiceProvider);
+        fullKeys = await svc.slotsWhereAllCourtsBusy(
+          days: days,
+          hours: hours,
+          courtIds: _selectedCourtIds,
+        );
+    }
+
     return _CalendarLoad(
       lessons: lessons,
       firstNamesByLessonId: names,
       repFirstNameByLessonId: reps,
+      allCourtsFullKeys: fullKeys,
     );
   }
 }
@@ -661,11 +738,14 @@ class _CalendarLoad {
     required this.lessons,
     required this.firstNamesByLessonId,
     required this.repFirstNameByLessonId,
+    this.allCourtsFullKeys = const {},
   });
 
   final List<Lesson> lessons;
   final Map<String, List<String>> firstNamesByLessonId;
   final Map<String, String> repFirstNameByLessonId;
+  /// Key: `yyyy-M-d|H`
+  final Set<String> allCourtsFullKeys;
 }
 class _CalendarGrid extends StatelessWidget {
   const _CalendarGrid({
@@ -673,6 +753,7 @@ class _CalendarGrid extends StatelessWidget {
     required this.lessons,
     required this.firstNamesByLessonId,
     required this.repFirstNameByLessonId,
+    required this.allCourtsFullKeys,
     required this.totalWidth,
     required this.expandedBlocks,
     required this.onToggleBlock,
@@ -685,6 +766,7 @@ class _CalendarGrid extends StatelessWidget {
   final List<Lesson> lessons;
   final Map<String, List<String>> firstNamesByLessonId;
   final Map<String, String> repFirstNameByLessonId;
+  final Set<String> allCourtsFullKeys;
   final double totalWidth;
   final Set<String> expandedBlocks;
   final void Function(String blockId) onToggleBlock;
@@ -692,12 +774,18 @@ class _CalendarGrid extends StatelessWidget {
   final Future<void> Function(Lesson lesson, DateTime newStart) onLessonDrop;
   final void Function(Lesson lesson) onLessonTap;
 
-  static const _cellHeight = 42.0;
+  static const _cellHeight = 56.0;
   static const _timeWidth = 36.0;
   static const _headerHeight = 32.0;
   static const _blockHeaderHeight = 28.0;
 
   double get _dayWidth => (totalWidth - _timeWidth) / weekDays.length;
+
+  static String slotKey(DateTime day, int hour) =>
+      '${day.year}-${day.month}-${day.day}|$hour';
+
+  bool _courtsFull(DateTime day, int hour) =>
+      allCourtsFullKeys.contains(slotKey(day, hour));
 
   Lesson? _lessonAt(DateTime day, int hour) {
     final slotStart = DateTime(day.year, day.month, day.day, hour);
@@ -861,10 +949,12 @@ class _CalendarGrid extends StatelessWidget {
                                 ),
                                 ...weekDays.map((day) {
                                   final lesson = _lessonAt(day, hour);
+                                  final courtsFull = _courtsFull(day, hour);
                                   if (lesson != null && lesson.startTime.hour == hour) {
                                     return _LessonCell(
                                       lesson: lesson,
                                       cellWidth: dayW,
+                                      courtsFull: courtsFull,
                                       participantFirstNames:
                                           firstNamesByLessonId[lesson.id] ?? const [],
                                       representativeFirstName:
@@ -876,6 +966,7 @@ class _CalendarGrid extends StatelessWidget {
                                     return const SizedBox(height: _cellHeight);
                                   }
                                   return _EmptyCell(
+                                    courtsFull: courtsFull,
                                     onTap: () => onCellTap(day, hour),
                                     onAccept: (data) {
                                       if (data is Lesson) {
@@ -903,21 +994,16 @@ class _CalendarGrid extends StatelessWidget {
     );
   }
 }
-class _LegendSwatch extends StatelessWidget {
-  const _LegendSwatch({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(width: 16, height: 14, child: child);
-  }
-}
-
 class _EmptyCell extends StatelessWidget {
-  const _EmptyCell({required this.onTap, required this.onAccept});
+  const _EmptyCell({
+    required this.onTap,
+    required this.onAccept,
+    this.courtsFull = false,
+  });
 
   final VoidCallback onTap;
   final void Function(Object? data) onAccept;
+  final bool courtsFull;
 
   static const _gap = EdgeInsets.all(2);
   static final _radius = BorderRadius.circular(10);
@@ -928,12 +1014,22 @@ class _EmptyCell extends StatelessWidget {
       onAcceptWithDetails: (d) => onAccept(d.data),
       builder: (context, candidate, rejected) {
         final hovering = candidate.isNotEmpty;
+        final bg = hovering
+            ? const Color(0xFFE8F0EA)
+            : courtsFull
+                ? const Color(0xFFF5E6E4)
+                : const Color(0xFFF7F8F7);
+        final border = hovering
+            ? const Color(0xFF9BB5A4)
+            : courtsFull
+                ? const Color(0xFFD4A39A)
+                : const Color(0xFFE6E8E6);
         return SizedBox(
           height: _CalendarGrid._cellHeight,
           child: Padding(
             padding: _gap,
             child: Material(
-              color: hovering ? const Color(0xFFE8F0EA) : const Color(0xFFF7F8F7),
+              color: bg,
               borderRadius: _radius,
               clipBehavior: Clip.antiAlias,
               child: InkWell(
@@ -942,15 +1038,23 @@ class _EmptyCell extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: _radius,
-                    border: Border.all(
-                      color: hovering
-                          ? const Color(0xFF9BB5A4)
-                          : const Color(0xFFE6E8E6),
-                    ),
+                    border: Border.all(color: border),
                   ),
                   child: hovering
                       ? const Icon(Icons.add, size: 16, color: Color(0xFF5F7A68))
-                      : null,
+                      : courtsFull
+                          ? const Align(
+                              alignment: Alignment.topRight,
+                              child: Padding(
+                                padding: EdgeInsets.all(3),
+                                child: Icon(
+                                  Icons.block,
+                                  size: 12,
+                                  color: Color(0xFFB55A4A),
+                                ),
+                              ),
+                            )
+                          : null,
                 ),
               ),
             ),
@@ -968,6 +1072,7 @@ class _LessonCell extends StatelessWidget {
     required this.participantFirstNames,
     required this.representativeFirstName,
     required this.onTap,
+    this.courtsFull = false,
   });
 
   final Lesson lesson;
@@ -975,6 +1080,7 @@ class _LessonCell extends StatelessWidget {
   final List<String> participantFirstNames;
   final String? representativeFirstName;
   final VoidCallback onTap;
+  final bool courtsFull;
 
   static const _gap = EdgeInsets.all(2);
 
@@ -988,24 +1094,16 @@ class _LessonCell extends StatelessWidget {
         ? participantFirstNames.length
         : lesson.maxParticipants;
 
-    final String primary;
-    final String? secondary;
-
+    final List<String> lines;
     if (isGroup) {
-      primary = lesson.title ?? type.label;
-      secondary = representativeFirstName;
+      lines = ScheduleLessonSlot.groupLines(
+        lesson.title ?? type.label,
+        personCount,
+      );
     } else if (participantFirstNames.isNotEmpty) {
-      final names = participantFirstNames.map((n) => n.toLowerCase()).toList();
-      if (names.length == 1) {
-        final n = names.first;
-        primary = n.length <= 8 ? n : n.substring(0, 8);
-      } else {
-        primary = names.map((n) => n.length <= 2 ? n : n.substring(0, 2)).join('-');
-      }
-      secondary = null;
+      lines = ScheduleLessonSlot.privateLines(participantFirstNames);
     } else {
-      primary = lesson.title ?? (isTentative ? 'Olası özel' : type.label);
-      secondary = null;
+      lines = [lesson.title ?? (isTentative ? 'Olası özel' : type.label)];
     }
 
     final slot = ScheduleLessonSlot(
@@ -1013,10 +1111,24 @@ class _LessonCell extends StatelessWidget {
       colorHex: lesson.colorHex,
       isGroup: isGroup,
       isTentative: isTentative,
-      primary: primary,
-      secondary: secondary,
-      groupCount: isGroup ? personCount : null,
+      lines: lines,
       onTap: onTap,
+    );
+
+    final body = Stack(
+      children: [
+        Positioned.fill(child: slot),
+        if (courtsFull)
+          const Positioned(
+            top: 2,
+            right: 2,
+            child: Icon(
+              Icons.block,
+              size: 12,
+              color: Color(0xFFB55A4A),
+            ),
+          ),
+      ],
     );
 
     return Draggable<Lesson>(
@@ -1045,7 +1157,7 @@ class _LessonCell extends StatelessWidget {
       ),
       child: SizedBox(
         height: _CalendarGrid._cellHeight,
-        child: Padding(padding: _gap, child: slot),
+        child: Padding(padding: _gap, child: body),
       ),
     );
   }

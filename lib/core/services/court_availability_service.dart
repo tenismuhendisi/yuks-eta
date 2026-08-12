@@ -2,6 +2,7 @@ import 'package:crm_app/core/constants/app_constants.dart';
 import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/enums/user_role.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
+import 'package:crm_app/core/utils/student_notes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum SlotStatus { available, lesson, rental, blocked }
@@ -69,13 +70,28 @@ class CourtSlot {
       if (lower.startsWith('ço-') || lower.startsWith('co-')) {
         return 'Ç${t.split('-').last}';
       }
+      if (lower.startsWith('gö-') || lower.startsWith('go-')) {
+        return 'G${t.split('-').last}';
+      }
       if (lower.startsWith('yet-')) {
         return 'Y${t.split('-').last}';
+      }
+      if (lower.startsWith('alt-')) {
+        return 'A${t.split('-').last}';
+      }
+      if (lower.startsWith('te-')) {
+        return 'T${t.split('-').last}';
+      }
+      if (lower.startsWith('yaz') || lower.startsWith('luna')) {
+        return t.length <= 8 ? t : 'Yaz';
+      }
+      if (lower.startsWith('perf')) {
+        return 'Perf';
       }
       return t;
     }
     if (isPrivateLesson) {
-      return participantNames ?? participantInitials;
+      return participantNames ?? participantInitials ?? lessonTitle;
     }
     return null;
   }
@@ -163,7 +179,7 @@ class CourtAvailabilityService {
           .toList();
       countByLesson[entry.key] = firstNames.length;
       namesByLesson[entry.key] =
-          firstNames.map((n) => n.toLowerCase()).join('-');
+          firstNames.map(turkishLower).join('-');
       initialsByLesson[entry.key] = entry.value
           .map((p) => _nameInitials(usersById[p.userId]?.name ?? ''))
           .where((s) => s.isNotEmpty)
@@ -346,6 +362,96 @@ class CourtAvailabilityService {
     }
     return free;
   }
+
+  /// Key: `yyyy-M-d|H` — seçili kortların hepsi dolu (güncel plan).
+  Future<Set<String>> slotsWhereAllCourtsBusy({
+    required List<DateTime> days,
+    required Iterable<int> hours,
+    required Set<String> courtIds,
+  }) async {
+    if (courtIds.isEmpty || days.isEmpty) return {};
+
+    final first = days.first;
+    final last = days.last;
+    final rangeStart = DateTime(
+      first.year,
+      first.month,
+      first.day,
+      AppConstants.calendarStartHour,
+    );
+    final rangeEnd = DateTime(
+      last.year,
+      last.month,
+      last.day,
+      AppConstants.calendarEndHour,
+    );
+
+    final blocks = await _db.getBlocksForRange(rangeStart, rangeEnd);
+    final rentals = await _db.getRentalsForRange(rangeStart, rangeEnd);
+    final lessons = await _db.getLessonsForRange(rangeStart, rangeEnd);
+
+    bool courtBusy(String courtId, DateTime start, DateTime end) {
+      if (blocks.any((b) =>
+          b.courtId == courtId &&
+          b.startTime.isBefore(end) &&
+          b.endTime.isAfter(start))) {
+        return true;
+      }
+      if (rentals.any((r) =>
+          r.courtId == courtId &&
+          r.startTime.isBefore(end) &&
+          r.endTime.isAfter(start))) {
+        return true;
+      }
+      return lessons.any((l) =>
+          l.courtId == courtId &&
+          !l.isTemplate &&
+          l.status != 'tentative' &&
+          l.startTime.isBefore(end) &&
+          l.endTime.isAfter(start));
+    }
+
+    final out = <String>{};
+    for (final day in days) {
+      for (final hour in hours) {
+        final start = DateTime(day.year, day.month, day.day, hour);
+        final end = start.add(const Duration(hours: 1));
+        if (courtIds.every((c) => courtBusy(c, start, end))) {
+          out.add(_slotKey(day, hour));
+        }
+      }
+    }
+    return out;
+  }
+
+  /// Key: `yyyy-M-d|H` — seçili kortların hepsi genel planda haklı.
+  static Set<String> slotsWhereAllCourtsClaimedInGeneralPlan({
+    required List<DateTime> days,
+    required Iterable<int> hours,
+    required Set<String> courtIds,
+    required List<WeeklyCourtRight> rights,
+  }) {
+    if (courtIds.isEmpty || days.isEmpty) return {};
+
+    final claimed = <String>{
+      for (final r in rights)
+        if (r.coachId != null) '${r.weekday}|${r.courtId}|${r.hour}',
+    };
+
+    final out = <String>{};
+    for (final day in days) {
+      for (final hour in hours) {
+        final allBusy = courtIds.every(
+          (c) => claimed.contains('${day.weekday}|$c|$hour'),
+        );
+        if (allBusy) out.add(_slotKey(day, hour));
+      }
+    }
+    return out;
+  }
+
+  static String _slotKey(DateTime day, int hour) =>
+      '${day.year}-${day.month}-${day.day}|$hour';
 }
 
 final courtAvailabilityServiceProvider = Provider<CourtAvailabilityService>((ref) {

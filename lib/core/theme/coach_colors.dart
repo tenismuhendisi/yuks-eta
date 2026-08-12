@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 /// Her antrenör için tek marka rengi.
 abstract final class CoachColors {
   static const Map<String, Color> _byId = {
-    'coach-yasir': Color(0xFF1565C0),
-    'coach-elizt': Color(0xFF6A1B9A),
+    /// Elif A — mor
+    'coach-yasir': Color(0xFF7B1FA2),
+    /// Elif B — mavi
+    'coach-elizt': Color(0xFF1565C0),
+    /// Yasin R — turkuaz
     'coach-eliza': Color(0xFF00838F),
-    'coach-gurkan': Color(0xFFC62828),
-    'coach-dogukan': Color(0xFFEF6C00),
+    /// Görkem V — turuncu
+    'coach-gurkan': Color(0xFFEF6C00),
+    /// Alperen Ç — kahverengi
+    'coach-dogukan': Color(0xFF5D4037),
+    /// Yüksel D — yeşil
     'coach-alper': Color(0xFF2E7D32),
-    'coach-yucel': Color(0xFF4527A0),
+    /// Doğan S — siyah
+    'coach-yucel': Color(0xFF212121),
   };
 
   static const List<Color> _fallbackPalette = [
@@ -22,18 +29,18 @@ abstract final class CoachColors {
 
   /// Olası dersler için seçilebilir renkler.
   static const List<Color> tentativePalette = [
+    Color(0xFF7B1FA2),
     Color(0xFF1565C0),
     Color(0xFF00838F),
-    Color(0xFF2E7D32),
     Color(0xFFEF6C00),
-    Color(0xFFC62828),
-    Color(0xFF6A1B9A),
-    Color(0xFF4527A0),
+    Color(0xFF5D4037),
+    Color(0xFF2E7D32),
+    Color(0xFF212121),
     Color(0xFFAD1457),
     Color(0xFF558B2F),
-    Color(0xFF5D4037),
-    Color(0xFF455A64),
     Color(0xFFF9A825),
+    Color(0xFF455A64),
+    Color(0xFFC62828),
   ];
 
   static Color forCoach(String? coachId, {String? colorHex}) {

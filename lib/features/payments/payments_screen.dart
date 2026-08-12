@@ -34,34 +34,23 @@ class PaymentsScreen extends ConsumerWidget {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  role == UserRole.athlete
-                      ? 'Ödemelerim'
-                      : role == UserRole.coach
-                          ? 'Muhasebe'
-                          : 'Ödeme Takibi',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+        if (canCreate)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (_) => PaymentFormDialog(createdById: userId),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Ödeme Ekle'),
               ),
-              if (canCreate)
-                FilledButton.icon(
-                  onPressed: () async {
-                    await showDialog(
-                      context: context,
-                      builder: (_) => PaymentFormDialog(createdById: userId),
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Ödeme Ekle'),
-                ),
-            ],
+            ),
           ),
-        ),
         Expanded(
           child: StreamBuilder<List<Payment>>(
             stream: stream,

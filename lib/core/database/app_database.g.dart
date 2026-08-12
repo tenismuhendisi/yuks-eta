@@ -4312,6 +4312,1027 @@ class LessonAttendancesCompanion extends UpdateCompanion<LessonAttendance> {
   }
 }
 
+class $WeeklyCourtRightsTable extends WeeklyCourtRights
+    with TableInfo<$WeeklyCourtRightsTable, WeeklyCourtRight> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WeeklyCourtRightsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _weekdayMeta =
+      const VerificationMeta('weekday');
+  @override
+  late final GeneratedColumn<int> weekday = GeneratedColumn<int>(
+      'weekday', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _courtIdMeta =
+      const VerificationMeta('courtId');
+  @override
+  late final GeneratedColumn<String> courtId = GeneratedColumn<String>(
+      'court_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES courts (id)'));
+  static const VerificationMeta _hourMeta = const VerificationMeta('hour');
+  @override
+  late final GeneratedColumn<int> hour = GeneratedColumn<int>(
+      'hour', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _coachIdMeta =
+      const VerificationMeta('coachId');
+  @override
+  late final GeneratedColumn<String> coachId = GeneratedColumn<String>(
+      'coach_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+      'label', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, weekday, courtId, hour, coachId, label, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'weekly_court_rights';
+  @override
+  VerificationContext validateIntegrity(Insertable<WeeklyCourtRight> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('weekday')) {
+      context.handle(_weekdayMeta,
+          weekday.isAcceptableOrUnknown(data['weekday']!, _weekdayMeta));
+    } else if (isInserting) {
+      context.missing(_weekdayMeta);
+    }
+    if (data.containsKey('court_id')) {
+      context.handle(_courtIdMeta,
+          courtId.isAcceptableOrUnknown(data['court_id']!, _courtIdMeta));
+    } else if (isInserting) {
+      context.missing(_courtIdMeta);
+    }
+    if (data.containsKey('hour')) {
+      context.handle(
+          _hourMeta, hour.isAcceptableOrUnknown(data['hour']!, _hourMeta));
+    } else if (isInserting) {
+      context.missing(_hourMeta);
+    }
+    if (data.containsKey('coach_id')) {
+      context.handle(_coachIdMeta,
+          coachId.isAcceptableOrUnknown(data['coach_id']!, _coachIdMeta));
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+          _labelMeta, label.isAcceptableOrUnknown(data['label']!, _labelMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+        {weekday, courtId, hour},
+      ];
+  @override
+  WeeklyCourtRight map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WeeklyCourtRight(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      weekday: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}weekday'])!,
+      courtId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}court_id'])!,
+      hour: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}hour'])!,
+      coachId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}coach_id']),
+      label: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}label']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $WeeklyCourtRightsTable createAlias(String alias) {
+    return $WeeklyCourtRightsTable(attachedDatabase, alias);
+  }
+}
+
+class WeeklyCourtRight extends DataClass
+    implements Insertable<WeeklyCourtRight> {
+  final String id;
+
+  /// DateTime.monday = 1 … saturday = 6
+  final int weekday;
+  final String courtId;
+  final int hour;
+  final String? coachId;
+  final String? label;
+  final DateTime updatedAt;
+  const WeeklyCourtRight(
+      {required this.id,
+      required this.weekday,
+      required this.courtId,
+      required this.hour,
+      this.coachId,
+      this.label,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['weekday'] = Variable<int>(weekday);
+    map['court_id'] = Variable<String>(courtId);
+    map['hour'] = Variable<int>(hour);
+    if (!nullToAbsent || coachId != null) {
+      map['coach_id'] = Variable<String>(coachId);
+    }
+    if (!nullToAbsent || label != null) {
+      map['label'] = Variable<String>(label);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  WeeklyCourtRightsCompanion toCompanion(bool nullToAbsent) {
+    return WeeklyCourtRightsCompanion(
+      id: Value(id),
+      weekday: Value(weekday),
+      courtId: Value(courtId),
+      hour: Value(hour),
+      coachId: coachId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coachId),
+      label:
+          label == null && nullToAbsent ? const Value.absent() : Value(label),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WeeklyCourtRight.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WeeklyCourtRight(
+      id: serializer.fromJson<String>(json['id']),
+      weekday: serializer.fromJson<int>(json['weekday']),
+      courtId: serializer.fromJson<String>(json['courtId']),
+      hour: serializer.fromJson<int>(json['hour']),
+      coachId: serializer.fromJson<String?>(json['coachId']),
+      label: serializer.fromJson<String?>(json['label']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'weekday': serializer.toJson<int>(weekday),
+      'courtId': serializer.toJson<String>(courtId),
+      'hour': serializer.toJson<int>(hour),
+      'coachId': serializer.toJson<String?>(coachId),
+      'label': serializer.toJson<String?>(label),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  WeeklyCourtRight copyWith(
+          {String? id,
+          int? weekday,
+          String? courtId,
+          int? hour,
+          Value<String?> coachId = const Value.absent(),
+          Value<String?> label = const Value.absent(),
+          DateTime? updatedAt}) =>
+      WeeklyCourtRight(
+        id: id ?? this.id,
+        weekday: weekday ?? this.weekday,
+        courtId: courtId ?? this.courtId,
+        hour: hour ?? this.hour,
+        coachId: coachId.present ? coachId.value : this.coachId,
+        label: label.present ? label.value : this.label,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  WeeklyCourtRight copyWithCompanion(WeeklyCourtRightsCompanion data) {
+    return WeeklyCourtRight(
+      id: data.id.present ? data.id.value : this.id,
+      weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      courtId: data.courtId.present ? data.courtId.value : this.courtId,
+      hour: data.hour.present ? data.hour.value : this.hour,
+      coachId: data.coachId.present ? data.coachId.value : this.coachId,
+      label: data.label.present ? data.label.value : this.label,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeeklyCourtRight(')
+          ..write('id: $id, ')
+          ..write('weekday: $weekday, ')
+          ..write('courtId: $courtId, ')
+          ..write('hour: $hour, ')
+          ..write('coachId: $coachId, ')
+          ..write('label: $label, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, weekday, courtId, hour, coachId, label, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeeklyCourtRight &&
+          other.id == this.id &&
+          other.weekday == this.weekday &&
+          other.courtId == this.courtId &&
+          other.hour == this.hour &&
+          other.coachId == this.coachId &&
+          other.label == this.label &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WeeklyCourtRightsCompanion extends UpdateCompanion<WeeklyCourtRight> {
+  final Value<String> id;
+  final Value<int> weekday;
+  final Value<String> courtId;
+  final Value<int> hour;
+  final Value<String?> coachId;
+  final Value<String?> label;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const WeeklyCourtRightsCompanion({
+    this.id = const Value.absent(),
+    this.weekday = const Value.absent(),
+    this.courtId = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.coachId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WeeklyCourtRightsCompanion.insert({
+    required String id,
+    required int weekday,
+    required String courtId,
+    required int hour,
+    this.coachId = const Value.absent(),
+    this.label = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        weekday = Value(weekday),
+        courtId = Value(courtId),
+        hour = Value(hour),
+        updatedAt = Value(updatedAt);
+  static Insertable<WeeklyCourtRight> custom({
+    Expression<String>? id,
+    Expression<int>? weekday,
+    Expression<String>? courtId,
+    Expression<int>? hour,
+    Expression<String>? coachId,
+    Expression<String>? label,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (weekday != null) 'weekday': weekday,
+      if (courtId != null) 'court_id': courtId,
+      if (hour != null) 'hour': hour,
+      if (coachId != null) 'coach_id': coachId,
+      if (label != null) 'label': label,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WeeklyCourtRightsCompanion copyWith(
+      {Value<String>? id,
+      Value<int>? weekday,
+      Value<String>? courtId,
+      Value<int>? hour,
+      Value<String?>? coachId,
+      Value<String?>? label,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return WeeklyCourtRightsCompanion(
+      id: id ?? this.id,
+      weekday: weekday ?? this.weekday,
+      courtId: courtId ?? this.courtId,
+      hour: hour ?? this.hour,
+      coachId: coachId ?? this.coachId,
+      label: label ?? this.label,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (weekday.present) {
+      map['weekday'] = Variable<int>(weekday.value);
+    }
+    if (courtId.present) {
+      map['court_id'] = Variable<String>(courtId.value);
+    }
+    if (hour.present) {
+      map['hour'] = Variable<int>(hour.value);
+    }
+    if (coachId.present) {
+      map['coach_id'] = Variable<String>(coachId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeeklyCourtRightsCompanion(')
+          ..write('id: $id, ')
+          ..write('weekday: $weekday, ')
+          ..write('courtId: $courtId, ')
+          ..write('hour: $hour, ')
+          ..write('coachId: $coachId, ')
+          ..write('label: $label, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PlanChangeRequestsTable extends PlanChangeRequests
+    with TableInfo<$PlanChangeRequestsTable, PlanChangeRequest> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlanChangeRequestsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _requesterIdMeta =
+      const VerificationMeta('requesterId');
+  @override
+  late final GeneratedColumn<String> requesterId = GeneratedColumn<String>(
+      'requester_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _weekdayMeta =
+      const VerificationMeta('weekday');
+  @override
+  late final GeneratedColumn<int> weekday = GeneratedColumn<int>(
+      'weekday', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _courtIdMeta =
+      const VerificationMeta('courtId');
+  @override
+  late final GeneratedColumn<String> courtId = GeneratedColumn<String>(
+      'court_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES courts (id)'));
+  static const VerificationMeta _hourMeta = const VerificationMeta('hour');
+  @override
+  late final GeneratedColumn<int> hour = GeneratedColumn<int>(
+      'hour', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _fromCoachIdMeta =
+      const VerificationMeta('fromCoachId');
+  @override
+  late final GeneratedColumn<String> fromCoachId = GeneratedColumn<String>(
+      'from_coach_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _toCoachIdMeta =
+      const VerificationMeta('toCoachId');
+  @override
+  late final GeneratedColumn<String> toCoachId = GeneratedColumn<String>(
+      'to_coach_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _resolvedAtMeta =
+      const VerificationMeta('resolvedAt');
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+      'resolved_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _resolvedByIdMeta =
+      const VerificationMeta('resolvedById');
+  @override
+  late final GeneratedColumn<String> resolvedById = GeneratedColumn<String>(
+      'resolved_by_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        requesterId,
+        weekday,
+        courtId,
+        hour,
+        fromCoachId,
+        toCoachId,
+        note,
+        status,
+        createdAt,
+        resolvedAt,
+        resolvedById
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'plan_change_requests';
+  @override
+  VerificationContext validateIntegrity(Insertable<PlanChangeRequest> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('requester_id')) {
+      context.handle(
+          _requesterIdMeta,
+          requesterId.isAcceptableOrUnknown(
+              data['requester_id']!, _requesterIdMeta));
+    } else if (isInserting) {
+      context.missing(_requesterIdMeta);
+    }
+    if (data.containsKey('weekday')) {
+      context.handle(_weekdayMeta,
+          weekday.isAcceptableOrUnknown(data['weekday']!, _weekdayMeta));
+    } else if (isInserting) {
+      context.missing(_weekdayMeta);
+    }
+    if (data.containsKey('court_id')) {
+      context.handle(_courtIdMeta,
+          courtId.isAcceptableOrUnknown(data['court_id']!, _courtIdMeta));
+    } else if (isInserting) {
+      context.missing(_courtIdMeta);
+    }
+    if (data.containsKey('hour')) {
+      context.handle(
+          _hourMeta, hour.isAcceptableOrUnknown(data['hour']!, _hourMeta));
+    } else if (isInserting) {
+      context.missing(_hourMeta);
+    }
+    if (data.containsKey('from_coach_id')) {
+      context.handle(
+          _fromCoachIdMeta,
+          fromCoachId.isAcceptableOrUnknown(
+              data['from_coach_id']!, _fromCoachIdMeta));
+    }
+    if (data.containsKey('to_coach_id')) {
+      context.handle(
+          _toCoachIdMeta,
+          toCoachId.isAcceptableOrUnknown(
+              data['to_coach_id']!, _toCoachIdMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+          _resolvedAtMeta,
+          resolvedAt.isAcceptableOrUnknown(
+              data['resolved_at']!, _resolvedAtMeta));
+    }
+    if (data.containsKey('resolved_by_id')) {
+      context.handle(
+          _resolvedByIdMeta,
+          resolvedById.isAcceptableOrUnknown(
+              data['resolved_by_id']!, _resolvedByIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlanChangeRequest map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlanChangeRequest(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      requesterId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}requester_id'])!,
+      weekday: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}weekday'])!,
+      courtId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}court_id'])!,
+      hour: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}hour'])!,
+      fromCoachId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}from_coach_id']),
+      toCoachId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}to_coach_id']),
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      resolvedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}resolved_at']),
+      resolvedById: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}resolved_by_id']),
+    );
+  }
+
+  @override
+  $PlanChangeRequestsTable createAlias(String alias) {
+    return $PlanChangeRequestsTable(attachedDatabase, alias);
+  }
+}
+
+class PlanChangeRequest extends DataClass
+    implements Insertable<PlanChangeRequest> {
+  final String id;
+  final String requesterId;
+  final int weekday;
+  final String courtId;
+  final int hour;
+  final String? fromCoachId;
+  final String? toCoachId;
+  final String? note;
+
+  /// pending | approved | rejected
+  final String status;
+  final DateTime createdAt;
+  final DateTime? resolvedAt;
+  final String? resolvedById;
+  const PlanChangeRequest(
+      {required this.id,
+      required this.requesterId,
+      required this.weekday,
+      required this.courtId,
+      required this.hour,
+      this.fromCoachId,
+      this.toCoachId,
+      this.note,
+      required this.status,
+      required this.createdAt,
+      this.resolvedAt,
+      this.resolvedById});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['requester_id'] = Variable<String>(requesterId);
+    map['weekday'] = Variable<int>(weekday);
+    map['court_id'] = Variable<String>(courtId);
+    map['hour'] = Variable<int>(hour);
+    if (!nullToAbsent || fromCoachId != null) {
+      map['from_coach_id'] = Variable<String>(fromCoachId);
+    }
+    if (!nullToAbsent || toCoachId != null) {
+      map['to_coach_id'] = Variable<String>(toCoachId);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    }
+    if (!nullToAbsent || resolvedById != null) {
+      map['resolved_by_id'] = Variable<String>(resolvedById);
+    }
+    return map;
+  }
+
+  PlanChangeRequestsCompanion toCompanion(bool nullToAbsent) {
+    return PlanChangeRequestsCompanion(
+      id: Value(id),
+      requesterId: Value(requesterId),
+      weekday: Value(weekday),
+      courtId: Value(courtId),
+      hour: Value(hour),
+      fromCoachId: fromCoachId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fromCoachId),
+      toCoachId: toCoachId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toCoachId),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
+      resolvedById: resolvedById == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedById),
+    );
+  }
+
+  factory PlanChangeRequest.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlanChangeRequest(
+      id: serializer.fromJson<String>(json['id']),
+      requesterId: serializer.fromJson<String>(json['requesterId']),
+      weekday: serializer.fromJson<int>(json['weekday']),
+      courtId: serializer.fromJson<String>(json['courtId']),
+      hour: serializer.fromJson<int>(json['hour']),
+      fromCoachId: serializer.fromJson<String?>(json['fromCoachId']),
+      toCoachId: serializer.fromJson<String?>(json['toCoachId']),
+      note: serializer.fromJson<String?>(json['note']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
+      resolvedById: serializer.fromJson<String?>(json['resolvedById']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'requesterId': serializer.toJson<String>(requesterId),
+      'weekday': serializer.toJson<int>(weekday),
+      'courtId': serializer.toJson<String>(courtId),
+      'hour': serializer.toJson<int>(hour),
+      'fromCoachId': serializer.toJson<String?>(fromCoachId),
+      'toCoachId': serializer.toJson<String?>(toCoachId),
+      'note': serializer.toJson<String?>(note),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
+      'resolvedById': serializer.toJson<String?>(resolvedById),
+    };
+  }
+
+  PlanChangeRequest copyWith(
+          {String? id,
+          String? requesterId,
+          int? weekday,
+          String? courtId,
+          int? hour,
+          Value<String?> fromCoachId = const Value.absent(),
+          Value<String?> toCoachId = const Value.absent(),
+          Value<String?> note = const Value.absent(),
+          String? status,
+          DateTime? createdAt,
+          Value<DateTime?> resolvedAt = const Value.absent(),
+          Value<String?> resolvedById = const Value.absent()}) =>
+      PlanChangeRequest(
+        id: id ?? this.id,
+        requesterId: requesterId ?? this.requesterId,
+        weekday: weekday ?? this.weekday,
+        courtId: courtId ?? this.courtId,
+        hour: hour ?? this.hour,
+        fromCoachId: fromCoachId.present ? fromCoachId.value : this.fromCoachId,
+        toCoachId: toCoachId.present ? toCoachId.value : this.toCoachId,
+        note: note.present ? note.value : this.note,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+        resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
+        resolvedById:
+            resolvedById.present ? resolvedById.value : this.resolvedById,
+      );
+  PlanChangeRequest copyWithCompanion(PlanChangeRequestsCompanion data) {
+    return PlanChangeRequest(
+      id: data.id.present ? data.id.value : this.id,
+      requesterId:
+          data.requesterId.present ? data.requesterId.value : this.requesterId,
+      weekday: data.weekday.present ? data.weekday.value : this.weekday,
+      courtId: data.courtId.present ? data.courtId.value : this.courtId,
+      hour: data.hour.present ? data.hour.value : this.hour,
+      fromCoachId:
+          data.fromCoachId.present ? data.fromCoachId.value : this.fromCoachId,
+      toCoachId: data.toCoachId.present ? data.toCoachId.value : this.toCoachId,
+      note: data.note.present ? data.note.value : this.note,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      resolvedAt:
+          data.resolvedAt.present ? data.resolvedAt.value : this.resolvedAt,
+      resolvedById: data.resolvedById.present
+          ? data.resolvedById.value
+          : this.resolvedById,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlanChangeRequest(')
+          ..write('id: $id, ')
+          ..write('requesterId: $requesterId, ')
+          ..write('weekday: $weekday, ')
+          ..write('courtId: $courtId, ')
+          ..write('hour: $hour, ')
+          ..write('fromCoachId: $fromCoachId, ')
+          ..write('toCoachId: $toCoachId, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('resolvedById: $resolvedById')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      requesterId,
+      weekday,
+      courtId,
+      hour,
+      fromCoachId,
+      toCoachId,
+      note,
+      status,
+      createdAt,
+      resolvedAt,
+      resolvedById);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlanChangeRequest &&
+          other.id == this.id &&
+          other.requesterId == this.requesterId &&
+          other.weekday == this.weekday &&
+          other.courtId == this.courtId &&
+          other.hour == this.hour &&
+          other.fromCoachId == this.fromCoachId &&
+          other.toCoachId == this.toCoachId &&
+          other.note == this.note &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.resolvedAt == this.resolvedAt &&
+          other.resolvedById == this.resolvedById);
+}
+
+class PlanChangeRequestsCompanion extends UpdateCompanion<PlanChangeRequest> {
+  final Value<String> id;
+  final Value<String> requesterId;
+  final Value<int> weekday;
+  final Value<String> courtId;
+  final Value<int> hour;
+  final Value<String?> fromCoachId;
+  final Value<String?> toCoachId;
+  final Value<String?> note;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> resolvedAt;
+  final Value<String?> resolvedById;
+  final Value<int> rowid;
+  const PlanChangeRequestsCompanion({
+    this.id = const Value.absent(),
+    this.requesterId = const Value.absent(),
+    this.weekday = const Value.absent(),
+    this.courtId = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.fromCoachId = const Value.absent(),
+    this.toCoachId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.resolvedById = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlanChangeRequestsCompanion.insert({
+    required String id,
+    required String requesterId,
+    required int weekday,
+    required String courtId,
+    required int hour,
+    this.fromCoachId = const Value.absent(),
+    this.toCoachId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.status = const Value.absent(),
+    required DateTime createdAt,
+    this.resolvedAt = const Value.absent(),
+    this.resolvedById = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        requesterId = Value(requesterId),
+        weekday = Value(weekday),
+        courtId = Value(courtId),
+        hour = Value(hour),
+        createdAt = Value(createdAt);
+  static Insertable<PlanChangeRequest> custom({
+    Expression<String>? id,
+    Expression<String>? requesterId,
+    Expression<int>? weekday,
+    Expression<String>? courtId,
+    Expression<int>? hour,
+    Expression<String>? fromCoachId,
+    Expression<String>? toCoachId,
+    Expression<String>? note,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? resolvedAt,
+    Expression<String>? resolvedById,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (requesterId != null) 'requester_id': requesterId,
+      if (weekday != null) 'weekday': weekday,
+      if (courtId != null) 'court_id': courtId,
+      if (hour != null) 'hour': hour,
+      if (fromCoachId != null) 'from_coach_id': fromCoachId,
+      if (toCoachId != null) 'to_coach_id': toCoachId,
+      if (note != null) 'note': note,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (resolvedById != null) 'resolved_by_id': resolvedById,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlanChangeRequestsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? requesterId,
+      Value<int>? weekday,
+      Value<String>? courtId,
+      Value<int>? hour,
+      Value<String?>? fromCoachId,
+      Value<String?>? toCoachId,
+      Value<String?>? note,
+      Value<String>? status,
+      Value<DateTime>? createdAt,
+      Value<DateTime?>? resolvedAt,
+      Value<String?>? resolvedById,
+      Value<int>? rowid}) {
+    return PlanChangeRequestsCompanion(
+      id: id ?? this.id,
+      requesterId: requesterId ?? this.requesterId,
+      weekday: weekday ?? this.weekday,
+      courtId: courtId ?? this.courtId,
+      hour: hour ?? this.hour,
+      fromCoachId: fromCoachId ?? this.fromCoachId,
+      toCoachId: toCoachId ?? this.toCoachId,
+      note: note ?? this.note,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      resolvedById: resolvedById ?? this.resolvedById,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (requesterId.present) {
+      map['requester_id'] = Variable<String>(requesterId.value);
+    }
+    if (weekday.present) {
+      map['weekday'] = Variable<int>(weekday.value);
+    }
+    if (courtId.present) {
+      map['court_id'] = Variable<String>(courtId.value);
+    }
+    if (hour.present) {
+      map['hour'] = Variable<int>(hour.value);
+    }
+    if (fromCoachId.present) {
+      map['from_coach_id'] = Variable<String>(fromCoachId.value);
+    }
+    if (toCoachId.present) {
+      map['to_coach_id'] = Variable<String>(toCoachId.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    if (resolvedById.present) {
+      map['resolved_by_id'] = Variable<String>(resolvedById.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlanChangeRequestsCompanion(')
+          ..write('id: $id, ')
+          ..write('requesterId: $requesterId, ')
+          ..write('weekday: $weekday, ')
+          ..write('courtId: $courtId, ')
+          ..write('hour: $hour, ')
+          ..write('fromCoachId: $fromCoachId, ')
+          ..write('toCoachId: $toCoachId, ')
+          ..write('note: $note, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('resolvedById: $resolvedById, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4331,6 +5352,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ParentAthleteLinksTable(this);
   late final $LessonAttendancesTable lessonAttendances =
       $LessonAttendancesTable(this);
+  late final $WeeklyCourtRightsTable weeklyCourtRights =
+      $WeeklyCourtRightsTable(this);
+  late final $PlanChangeRequestsTable planChangeRequests =
+      $PlanChangeRequestsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4346,7 +5371,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         payments,
         studentProfiles,
         parentAthleteLinks,
-        lessonAttendances
+        lessonAttendances,
+        weeklyCourtRights,
+        planChangeRequests
       ];
 }
 
@@ -4437,6 +5464,23 @@ final class $$UsersTableReferences
 
     final cache =
         $_typedResult.readTableOrNull(_lessonParticipantsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$WeeklyCourtRightsTable, List<WeeklyCourtRight>>
+      _weeklyCourtRightsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.weeklyCourtRights,
+              aliasName: $_aliasNameGenerator(
+                  db.users.id, db.weeklyCourtRights.coachId));
+
+  $$WeeklyCourtRightsTableProcessedTableManager get weeklyCourtRightsRefs {
+    final manager =
+        $$WeeklyCourtRightsTableTableManager($_db, $_db.weeklyCourtRights)
+            .filter((f) => f.coachId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_weeklyCourtRightsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -4550,6 +5594,27 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
             $$LessonParticipantsTableFilterComposer(
               $db: $db,
               $table: $db.lessonParticipants,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> weeklyCourtRightsRefs(
+      Expression<bool> Function($$WeeklyCourtRightsTableFilterComposer f) f) {
+    final $$WeeklyCourtRightsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.weeklyCourtRights,
+        getReferencedColumn: (t) => t.coachId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$WeeklyCourtRightsTableFilterComposer(
+              $db: $db,
+              $table: $db.weeklyCourtRights,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -4712,6 +5777,28 @@ class $$UsersTableAnnotationComposer
                 ));
     return f(composer);
   }
+
+  Expression<T> weeklyCourtRightsRefs<T extends Object>(
+      Expression<T> Function($$WeeklyCourtRightsTableAnnotationComposer a) f) {
+    final $$WeeklyCourtRightsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.weeklyCourtRights,
+            getReferencedColumn: (t) => t.coachId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$WeeklyCourtRightsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.weeklyCourtRights,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$UsersTableTableManager extends RootTableManager<
@@ -4729,7 +5816,8 @@ class $$UsersTableTableManager extends RootTableManager<
         {bool courtBlocksRefs,
         bool courtRentalsRefs,
         bool creditTransactionsRefs,
-        bool lessonParticipantsRefs})> {
+        bool lessonParticipantsRefs,
+        bool weeklyCourtRightsRefs})> {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
       : super(TableManagerState(
           db: db,
@@ -4792,14 +5880,16 @@ class $$UsersTableTableManager extends RootTableManager<
               {courtBlocksRefs = false,
               courtRentalsRefs = false,
               creditTransactionsRefs = false,
-              lessonParticipantsRefs = false}) {
+              lessonParticipantsRefs = false,
+              weeklyCourtRightsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (courtBlocksRefs) db.courtBlocks,
                 if (courtRentalsRefs) db.courtRentals,
                 if (creditTransactionsRefs) db.creditTransactions,
-                if (lessonParticipantsRefs) db.lessonParticipants
+                if (lessonParticipantsRefs) db.lessonParticipants,
+                if (weeklyCourtRightsRefs) db.weeklyCourtRights
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -4853,6 +5943,19 @@ class $$UsersTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.userId == item.id),
+                        typedResults: items),
+                  if (weeklyCourtRightsRefs)
+                    await $_getPrefetchedData<User, $UsersTable,
+                            WeeklyCourtRight>(
+                        currentTable: table,
+                        referencedTable: $$UsersTableReferences
+                            ._weeklyCourtRightsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$UsersTableReferences(db, table, p0)
+                                .weeklyCourtRightsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.coachId == item.id),
                         typedResults: items)
                 ];
               },
@@ -4876,7 +5979,8 @@ typedef $$UsersTableProcessedTableManager = ProcessedTableManager<
         {bool courtBlocksRefs,
         bool courtRentalsRefs,
         bool creditTransactionsRefs,
-        bool lessonParticipantsRefs})>;
+        bool lessonParticipantsRefs,
+        bool weeklyCourtRightsRefs})>;
 typedef $$CourtsTableCreateCompanionBuilder = CourtsCompanion Function({
   required String id,
   required String name,
@@ -4936,6 +6040,40 @@ final class $$CourtsTableReferences
         .filter((f) => f.courtId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_lessonsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$WeeklyCourtRightsTable, List<WeeklyCourtRight>>
+      _weeklyCourtRightsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.weeklyCourtRights,
+              aliasName: $_aliasNameGenerator(
+                  db.courts.id, db.weeklyCourtRights.courtId));
+
+  $$WeeklyCourtRightsTableProcessedTableManager get weeklyCourtRightsRefs {
+    final manager =
+        $$WeeklyCourtRightsTableTableManager($_db, $_db.weeklyCourtRights)
+            .filter((f) => f.courtId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_weeklyCourtRightsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$PlanChangeRequestsTable, List<PlanChangeRequest>>
+      _planChangeRequestsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.planChangeRequests,
+              aliasName: $_aliasNameGenerator(
+                  db.courts.id, db.planChangeRequests.courtId));
+
+  $$PlanChangeRequestsTableProcessedTableManager get planChangeRequestsRefs {
+    final manager =
+        $$PlanChangeRequestsTableTableManager($_db, $_db.planChangeRequests)
+            .filter((f) => f.courtId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_planChangeRequestsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -5017,6 +6155,48 @@ class $$CourtsTableFilterComposer
             $$LessonsTableFilterComposer(
               $db: $db,
               $table: $db.lessons,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> weeklyCourtRightsRefs(
+      Expression<bool> Function($$WeeklyCourtRightsTableFilterComposer f) f) {
+    final $$WeeklyCourtRightsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.weeklyCourtRights,
+        getReferencedColumn: (t) => t.courtId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$WeeklyCourtRightsTableFilterComposer(
+              $db: $db,
+              $table: $db.weeklyCourtRights,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> planChangeRequestsRefs(
+      Expression<bool> Function($$PlanChangeRequestsTableFilterComposer f) f) {
+    final $$PlanChangeRequestsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.planChangeRequests,
+        getReferencedColumn: (t) => t.courtId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$PlanChangeRequestsTableFilterComposer(
+              $db: $db,
+              $table: $db.planChangeRequests,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -5131,6 +6311,50 @@ class $$CourtsTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> weeklyCourtRightsRefs<T extends Object>(
+      Expression<T> Function($$WeeklyCourtRightsTableAnnotationComposer a) f) {
+    final $$WeeklyCourtRightsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.weeklyCourtRights,
+            getReferencedColumn: (t) => t.courtId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$WeeklyCourtRightsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.weeklyCourtRights,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
+  Expression<T> planChangeRequestsRefs<T extends Object>(
+      Expression<T> Function($$PlanChangeRequestsTableAnnotationComposer a) f) {
+    final $$PlanChangeRequestsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.planChangeRequests,
+            getReferencedColumn: (t) => t.courtId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$PlanChangeRequestsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.planChangeRequests,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$CourtsTableTableManager extends RootTableManager<
@@ -5145,7 +6369,11 @@ class $$CourtsTableTableManager extends RootTableManager<
     (Court, $$CourtsTableReferences),
     Court,
     PrefetchHooks Function(
-        {bool courtBlocksRefs, bool courtRentalsRefs, bool lessonsRefs})> {
+        {bool courtBlocksRefs,
+        bool courtRentalsRefs,
+        bool lessonsRefs,
+        bool weeklyCourtRightsRefs,
+        bool planChangeRequestsRefs})> {
   $$CourtsTableTableManager(_$AppDatabase db, $CourtsTable table)
       : super(TableManagerState(
           db: db,
@@ -5191,13 +6419,17 @@ class $$CourtsTableTableManager extends RootTableManager<
           prefetchHooksCallback: (
               {courtBlocksRefs = false,
               courtRentalsRefs = false,
-              lessonsRefs = false}) {
+              lessonsRefs = false,
+              weeklyCourtRightsRefs = false,
+              planChangeRequestsRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (courtBlocksRefs) db.courtBlocks,
                 if (courtRentalsRefs) db.courtRentals,
-                if (lessonsRefs) db.lessons
+                if (lessonsRefs) db.lessons,
+                if (weeklyCourtRightsRefs) db.weeklyCourtRights,
+                if (planChangeRequestsRefs) db.planChangeRequests
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -5236,6 +6468,32 @@ class $$CourtsTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.courtId == item.id),
+                        typedResults: items),
+                  if (weeklyCourtRightsRefs)
+                    await $_getPrefetchedData<Court, $CourtsTable,
+                            WeeklyCourtRight>(
+                        currentTable: table,
+                        referencedTable: $$CourtsTableReferences
+                            ._weeklyCourtRightsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$CourtsTableReferences(db, table, p0)
+                                .weeklyCourtRightsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.courtId == item.id),
+                        typedResults: items),
+                  if (planChangeRequestsRefs)
+                    await $_getPrefetchedData<Court, $CourtsTable,
+                            PlanChangeRequest>(
+                        currentTable: table,
+                        referencedTable: $$CourtsTableReferences
+                            ._planChangeRequestsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$CourtsTableReferences(db, table, p0)
+                                .planChangeRequestsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.courtId == item.id),
                         typedResults: items)
                 ];
               },
@@ -5256,7 +6514,11 @@ typedef $$CourtsTableProcessedTableManager = ProcessedTableManager<
     (Court, $$CourtsTableReferences),
     Court,
     PrefetchHooks Function(
-        {bool courtBlocksRefs, bool courtRentalsRefs, bool lessonsRefs})>;
+        {bool courtBlocksRefs,
+        bool courtRentalsRefs,
+        bool lessonsRefs,
+        bool weeklyCourtRightsRefs,
+        bool planChangeRequestsRefs})>;
 typedef $$CourtBlocksTableCreateCompanionBuilder = CourtBlocksCompanion
     Function({
   required String id,
@@ -9099,6 +10361,1093 @@ typedef $$LessonAttendancesTableProcessedTableManager = ProcessedTableManager<
     (LessonAttendance, $$LessonAttendancesTableReferences),
     LessonAttendance,
     PrefetchHooks Function({bool lessonId, bool userId, bool markedById})>;
+typedef $$WeeklyCourtRightsTableCreateCompanionBuilder
+    = WeeklyCourtRightsCompanion Function({
+  required String id,
+  required int weekday,
+  required String courtId,
+  required int hour,
+  Value<String?> coachId,
+  Value<String?> label,
+  required DateTime updatedAt,
+  Value<int> rowid,
+});
+typedef $$WeeklyCourtRightsTableUpdateCompanionBuilder
+    = WeeklyCourtRightsCompanion Function({
+  Value<String> id,
+  Value<int> weekday,
+  Value<String> courtId,
+  Value<int> hour,
+  Value<String?> coachId,
+  Value<String?> label,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$WeeklyCourtRightsTableReferences extends BaseReferences<
+    _$AppDatabase, $WeeklyCourtRightsTable, WeeklyCourtRight> {
+  $$WeeklyCourtRightsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $CourtsTable _courtIdTable(_$AppDatabase db) => db.courts.createAlias(
+      $_aliasNameGenerator(db.weeklyCourtRights.courtId, db.courts.id));
+
+  $$CourtsTableProcessedTableManager get courtId {
+    final $_column = $_itemColumn<String>('court_id')!;
+
+    final manager = $$CourtsTableTableManager($_db, $_db.courts)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_courtIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _coachIdTable(_$AppDatabase db) => db.users.createAlias(
+      $_aliasNameGenerator(db.weeklyCourtRights.coachId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get coachId {
+    final $_column = $_itemColumn<String>('coach_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_coachIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$WeeklyCourtRightsTableFilterComposer
+    extends Composer<_$AppDatabase, $WeeklyCourtRightsTable> {
+  $$WeeklyCourtRightsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get weekday => $composableBuilder(
+      column: $table.weekday, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get label => $composableBuilder(
+      column: $table.label, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$CourtsTableFilterComposer get courtId {
+    final $$CourtsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableFilterComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get coachId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.coachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$WeeklyCourtRightsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WeeklyCourtRightsTable> {
+  $$WeeklyCourtRightsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get weekday => $composableBuilder(
+      column: $table.weekday, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get label => $composableBuilder(
+      column: $table.label, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$CourtsTableOrderingComposer get courtId {
+    final $$CourtsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableOrderingComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get coachId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.coachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$WeeklyCourtRightsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WeeklyCourtRightsTable> {
+  $$WeeklyCourtRightsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get weekday =>
+      $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<int> get hour =>
+      $composableBuilder(column: $table.hour, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$CourtsTableAnnotationComposer get courtId {
+    final $$CourtsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get coachId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.coachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$WeeklyCourtRightsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $WeeklyCourtRightsTable,
+    WeeklyCourtRight,
+    $$WeeklyCourtRightsTableFilterComposer,
+    $$WeeklyCourtRightsTableOrderingComposer,
+    $$WeeklyCourtRightsTableAnnotationComposer,
+    $$WeeklyCourtRightsTableCreateCompanionBuilder,
+    $$WeeklyCourtRightsTableUpdateCompanionBuilder,
+    (WeeklyCourtRight, $$WeeklyCourtRightsTableReferences),
+    WeeklyCourtRight,
+    PrefetchHooks Function({bool courtId, bool coachId})> {
+  $$WeeklyCourtRightsTableTableManager(
+      _$AppDatabase db, $WeeklyCourtRightsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WeeklyCourtRightsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WeeklyCourtRightsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WeeklyCourtRightsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int> weekday = const Value.absent(),
+            Value<String> courtId = const Value.absent(),
+            Value<int> hour = const Value.absent(),
+            Value<String?> coachId = const Value.absent(),
+            Value<String?> label = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              WeeklyCourtRightsCompanion(
+            id: id,
+            weekday: weekday,
+            courtId: courtId,
+            hour: hour,
+            coachId: coachId,
+            label: label,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required int weekday,
+            required String courtId,
+            required int hour,
+            Value<String?> coachId = const Value.absent(),
+            Value<String?> label = const Value.absent(),
+            required DateTime updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              WeeklyCourtRightsCompanion.insert(
+            id: id,
+            weekday: weekday,
+            courtId: courtId,
+            hour: hour,
+            coachId: coachId,
+            label: label,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$WeeklyCourtRightsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({courtId = false, coachId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (courtId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.courtId,
+                    referencedTable:
+                        $$WeeklyCourtRightsTableReferences._courtIdTable(db),
+                    referencedColumn:
+                        $$WeeklyCourtRightsTableReferences._courtIdTable(db).id,
+                  ) as T;
+                }
+                if (coachId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.coachId,
+                    referencedTable:
+                        $$WeeklyCourtRightsTableReferences._coachIdTable(db),
+                    referencedColumn:
+                        $$WeeklyCourtRightsTableReferences._coachIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$WeeklyCourtRightsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $WeeklyCourtRightsTable,
+    WeeklyCourtRight,
+    $$WeeklyCourtRightsTableFilterComposer,
+    $$WeeklyCourtRightsTableOrderingComposer,
+    $$WeeklyCourtRightsTableAnnotationComposer,
+    $$WeeklyCourtRightsTableCreateCompanionBuilder,
+    $$WeeklyCourtRightsTableUpdateCompanionBuilder,
+    (WeeklyCourtRight, $$WeeklyCourtRightsTableReferences),
+    WeeklyCourtRight,
+    PrefetchHooks Function({bool courtId, bool coachId})>;
+typedef $$PlanChangeRequestsTableCreateCompanionBuilder
+    = PlanChangeRequestsCompanion Function({
+  required String id,
+  required String requesterId,
+  required int weekday,
+  required String courtId,
+  required int hour,
+  Value<String?> fromCoachId,
+  Value<String?> toCoachId,
+  Value<String?> note,
+  Value<String> status,
+  required DateTime createdAt,
+  Value<DateTime?> resolvedAt,
+  Value<String?> resolvedById,
+  Value<int> rowid,
+});
+typedef $$PlanChangeRequestsTableUpdateCompanionBuilder
+    = PlanChangeRequestsCompanion Function({
+  Value<String> id,
+  Value<String> requesterId,
+  Value<int> weekday,
+  Value<String> courtId,
+  Value<int> hour,
+  Value<String?> fromCoachId,
+  Value<String?> toCoachId,
+  Value<String?> note,
+  Value<String> status,
+  Value<DateTime> createdAt,
+  Value<DateTime?> resolvedAt,
+  Value<String?> resolvedById,
+  Value<int> rowid,
+});
+
+final class $$PlanChangeRequestsTableReferences extends BaseReferences<
+    _$AppDatabase, $PlanChangeRequestsTable, PlanChangeRequest> {
+  $$PlanChangeRequestsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $UsersTable _requesterIdTable(_$AppDatabase db) =>
+      db.users.createAlias(
+          $_aliasNameGenerator(db.planChangeRequests.requesterId, db.users.id));
+
+  $$UsersTableProcessedTableManager get requesterId {
+    final $_column = $_itemColumn<String>('requester_id')!;
+
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_requesterIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $CourtsTable _courtIdTable(_$AppDatabase db) => db.courts.createAlias(
+      $_aliasNameGenerator(db.planChangeRequests.courtId, db.courts.id));
+
+  $$CourtsTableProcessedTableManager get courtId {
+    final $_column = $_itemColumn<String>('court_id')!;
+
+    final manager = $$CourtsTableTableManager($_db, $_db.courts)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_courtIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _fromCoachIdTable(_$AppDatabase db) =>
+      db.users.createAlias(
+          $_aliasNameGenerator(db.planChangeRequests.fromCoachId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get fromCoachId {
+    final $_column = $_itemColumn<String>('from_coach_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fromCoachIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _toCoachIdTable(_$AppDatabase db) => db.users.createAlias(
+      $_aliasNameGenerator(db.planChangeRequests.toCoachId, db.users.id));
+
+  $$UsersTableProcessedTableManager? get toCoachId {
+    final $_column = $_itemColumn<String>('to_coach_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toCoachIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _resolvedByIdTable(_$AppDatabase db) =>
+      db.users.createAlias($_aliasNameGenerator(
+          db.planChangeRequests.resolvedById, db.users.id));
+
+  $$UsersTableProcessedTableManager? get resolvedById {
+    final $_column = $_itemColumn<String>('resolved_by_id');
+    if ($_column == null) return null;
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_resolvedByIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$PlanChangeRequestsTableFilterComposer
+    extends Composer<_$AppDatabase, $PlanChangeRequestsTable> {
+  $$PlanChangeRequestsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get weekday => $composableBuilder(
+      column: $table.weekday, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+      column: $table.resolvedAt, builder: (column) => ColumnFilters(column));
+
+  $$UsersTableFilterComposer get requesterId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.requesterId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$CourtsTableFilterComposer get courtId {
+    final $$CourtsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableFilterComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get fromCoachId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fromCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get toCoachId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.toCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get resolvedById {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.resolvedById,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$PlanChangeRequestsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlanChangeRequestsTable> {
+  $$PlanChangeRequestsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get weekday => $composableBuilder(
+      column: $table.weekday, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get hour => $composableBuilder(
+      column: $table.hour, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+      column: $table.resolvedAt, builder: (column) => ColumnOrderings(column));
+
+  $$UsersTableOrderingComposer get requesterId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.requesterId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$CourtsTableOrderingComposer get courtId {
+    final $$CourtsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableOrderingComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get fromCoachId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fromCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get toCoachId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.toCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get resolvedById {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.resolvedById,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$PlanChangeRequestsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlanChangeRequestsTable> {
+  $$PlanChangeRequestsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get weekday =>
+      $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  GeneratedColumn<int> get hour =>
+      $composableBuilder(column: $table.hour, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+      column: $table.resolvedAt, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get requesterId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.requesterId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$CourtsTableAnnotationComposer get courtId {
+    final $$CourtsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.courtId,
+        referencedTable: $db.courts,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CourtsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.courts,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get fromCoachId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.fromCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get toCoachId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.toCoachId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get resolvedById {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.resolvedById,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$PlanChangeRequestsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PlanChangeRequestsTable,
+    PlanChangeRequest,
+    $$PlanChangeRequestsTableFilterComposer,
+    $$PlanChangeRequestsTableOrderingComposer,
+    $$PlanChangeRequestsTableAnnotationComposer,
+    $$PlanChangeRequestsTableCreateCompanionBuilder,
+    $$PlanChangeRequestsTableUpdateCompanionBuilder,
+    (PlanChangeRequest, $$PlanChangeRequestsTableReferences),
+    PlanChangeRequest,
+    PrefetchHooks Function(
+        {bool requesterId,
+        bool courtId,
+        bool fromCoachId,
+        bool toCoachId,
+        bool resolvedById})> {
+  $$PlanChangeRequestsTableTableManager(
+      _$AppDatabase db, $PlanChangeRequestsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlanChangeRequestsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlanChangeRequestsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlanChangeRequestsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> requesterId = const Value.absent(),
+            Value<int> weekday = const Value.absent(),
+            Value<String> courtId = const Value.absent(),
+            Value<int> hour = const Value.absent(),
+            Value<String?> fromCoachId = const Value.absent(),
+            Value<String?> toCoachId = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> resolvedAt = const Value.absent(),
+            Value<String?> resolvedById = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PlanChangeRequestsCompanion(
+            id: id,
+            requesterId: requesterId,
+            weekday: weekday,
+            courtId: courtId,
+            hour: hour,
+            fromCoachId: fromCoachId,
+            toCoachId: toCoachId,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            resolvedAt: resolvedAt,
+            resolvedById: resolvedById,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String requesterId,
+            required int weekday,
+            required String courtId,
+            required int hour,
+            Value<String?> fromCoachId = const Value.absent(),
+            Value<String?> toCoachId = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            required DateTime createdAt,
+            Value<DateTime?> resolvedAt = const Value.absent(),
+            Value<String?> resolvedById = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PlanChangeRequestsCompanion.insert(
+            id: id,
+            requesterId: requesterId,
+            weekday: weekday,
+            courtId: courtId,
+            hour: hour,
+            fromCoachId: fromCoachId,
+            toCoachId: toCoachId,
+            note: note,
+            status: status,
+            createdAt: createdAt,
+            resolvedAt: resolvedAt,
+            resolvedById: resolvedById,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$PlanChangeRequestsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: (
+              {requesterId = false,
+              courtId = false,
+              fromCoachId = false,
+              toCoachId = false,
+              resolvedById = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (requesterId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.requesterId,
+                    referencedTable: $$PlanChangeRequestsTableReferences
+                        ._requesterIdTable(db),
+                    referencedColumn: $$PlanChangeRequestsTableReferences
+                        ._requesterIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (courtId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.courtId,
+                    referencedTable:
+                        $$PlanChangeRequestsTableReferences._courtIdTable(db),
+                    referencedColumn: $$PlanChangeRequestsTableReferences
+                        ._courtIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (fromCoachId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.fromCoachId,
+                    referencedTable: $$PlanChangeRequestsTableReferences
+                        ._fromCoachIdTable(db),
+                    referencedColumn: $$PlanChangeRequestsTableReferences
+                        ._fromCoachIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (toCoachId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.toCoachId,
+                    referencedTable:
+                        $$PlanChangeRequestsTableReferences._toCoachIdTable(db),
+                    referencedColumn: $$PlanChangeRequestsTableReferences
+                        ._toCoachIdTable(db)
+                        .id,
+                  ) as T;
+                }
+                if (resolvedById) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.resolvedById,
+                    referencedTable: $$PlanChangeRequestsTableReferences
+                        ._resolvedByIdTable(db),
+                    referencedColumn: $$PlanChangeRequestsTableReferences
+                        ._resolvedByIdTable(db)
+                        .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$PlanChangeRequestsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PlanChangeRequestsTable,
+    PlanChangeRequest,
+    $$PlanChangeRequestsTableFilterComposer,
+    $$PlanChangeRequestsTableOrderingComposer,
+    $$PlanChangeRequestsTableAnnotationComposer,
+    $$PlanChangeRequestsTableCreateCompanionBuilder,
+    $$PlanChangeRequestsTableUpdateCompanionBuilder,
+    (PlanChangeRequest, $$PlanChangeRequestsTableReferences),
+    PlanChangeRequest,
+    PrefetchHooks Function(
+        {bool requesterId,
+        bool courtId,
+        bool fromCoachId,
+        bool toCoachId,
+        bool resolvedById})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9125,4 +11474,8 @@ class $AppDatabaseManager {
       $$ParentAthleteLinksTableTableManager(_db, _db.parentAthleteLinks);
   $$LessonAttendancesTableTableManager get lessonAttendances =>
       $$LessonAttendancesTableTableManager(_db, _db.lessonAttendances);
+  $$WeeklyCourtRightsTableTableManager get weeklyCourtRights =>
+      $$WeeklyCourtRightsTableTableManager(_db, _db.weeklyCourtRights);
+  $$PlanChangeRequestsTableTableManager get planChangeRequests =>
+      $$PlanChangeRequestsTableTableManager(_db, _db.planChangeRequests);
 }

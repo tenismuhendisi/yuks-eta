@@ -1,8 +1,11 @@
 import 'package:crm_app/core/database/app_database.dart';
 import 'package:crm_app/core/enums/attendance_status.dart';
+import 'package:crm_app/core/enums/ball_level.dart';
 import 'package:crm_app/core/enums/user_role.dart';
 import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/utils/app_date_format.dart';
+import 'package:crm_app/core/utils/student_notes.dart';
+import 'package:crm_app/core/widgets/itf_tennis_ball.dart';
 import 'package:crm_app/features/attendance/widgets/take_attendance_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,11 +88,7 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text('Yoklama', style: Theme.of(context).textTheme.titleLarge),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: SegmentedButton<_CoachAttendanceScope>(
             showSelectedIcon: false,
             segments: const [
@@ -129,7 +128,7 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: FutureBuilder<(List<Lesson>, Set<String>)>(
+          child: FutureBuilder<(List<Lesson>, Set<String>, Map<String, BallLevel>)>(
             key: ValueKey('$_scope-$_reloadToken'),
             future: () async {
               final lessons = await db.getLessonsForCoachInRange(
@@ -147,7 +146,8 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
                 group.map((l) => l.id).toList(),
               );
               final taken = {for (final a in atts) a.lessonId};
-              return (group, taken);
+              final levelByGroup = await _ballLevelByGroupCode(db, widget.coachId);
+              return (group, taken, levelByGroup);
             }(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -157,7 +157,7 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
               if (data == null) {
                 return const Center(child: Text('Yoklama listesi yüklenemedi'));
               }
-              var (lessons, takenIds) = data;
+              var (lessons, takenIds, levelByGroup) = data;
               if (_onlyPending) {
                 lessons = lessons.where((l) => !takenIds.contains(l.id)).toList();
               }
@@ -179,9 +179,11 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
                 itemBuilder: (context, index) {
                   final lesson = lessons[index];
                   final taken = takenIds.contains(lesson.id);
+                  final code = (lesson.title ?? '').trim().toLowerCase();
                   return _CoachLessonAttendanceCard(
                     lesson: lesson,
                     taken: taken,
+                    ballLevel: levelByGroup[code],
                     onOpen: () => _openAttendance(lesson),
                   );
                 },
@@ -194,16 +196,38 @@ class _CoachAttendanceTabState extends ConsumerState<_CoachAttendanceTab> {
   }
 }
 
+Future<Map<String, BallLevel>> _ballLevelByGroupCode(
+  AppDatabase db,
+  String coachId,
+) async {
+  final profiles = await db.getStudentsForCoach(coachId);
+  final counts = <String, Map<BallLevel, int>>{};
+  for (final p in profiles) {
+    final code = StudentNotes.groupCode(p.notes)?.toLowerCase();
+    if (code == null || code.isEmpty) continue;
+    final level = BallLevel.tryParse(p.level);
+    if (level == null) continue;
+    final bucket = counts.putIfAbsent(code, () => {});
+    bucket[level] = (bucket[level] ?? 0) + 1;
+  }
+  return {
+    for (final e in counts.entries)
+      e.key: e.value.entries.reduce((a, b) => a.value >= b.value ? a : b).key,
+  };
+}
+
 class _CoachLessonAttendanceCard extends StatelessWidget {
   const _CoachLessonAttendanceCard({
     required this.lesson,
     required this.taken,
     required this.onOpen,
+    this.ballLevel,
   });
 
   final Lesson lesson;
   final bool taken;
   final VoidCallback onOpen;
+  final BallLevel? ballLevel;
 
   @override
   Widget build(BuildContext context) {
@@ -221,9 +245,9 @@ class _CoachLessonAttendanceCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: const Icon(Icons.groups, size: 20),
+              ItfTennisBallAvatar(
+                level: ballLevel,
+                size: 36,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -301,10 +325,6 @@ class _AdminAttendanceTab extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text('Yoklama Takibi', style: Theme.of(context).textTheme.titleLarge),
-        ),
         Expanded(
           child: FutureBuilder<List<LessonAttendance>>(
             future: db.getRecentAttendances(limit: 80),
@@ -317,7 +337,7 @@ class _AdminAttendanceTab extends ConsumerWidget {
                 return const Center(child: Text('Henüz yoklama kaydı yok'));
               }
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 itemCount: rows.length,
                 itemBuilder: (context, index) => _AttendanceTile(attendance: rows[index]),
               );

@@ -1,7 +1,8 @@
+import 'package:crm_app/core/utils/student_notes.dart';
 import 'package:flutter/material.dart';
 
 /// Kiralama hücresi — grup (sol şerit) ve özel dersten (antrenör rengi) ayrılır.
-/// Sağ turuncu şerit + kiracı adı.
+/// Sağ turuncu şerit + üstte raket ikonu, altta kiracı adı.
 abstract final class RentalSlotColors {
   static const fill = Color(0xFFFFF3E8);
   static const rail = Color(0xFFE65100);
@@ -30,9 +31,8 @@ class ScheduleRentalSlot extends StatelessWidget {
   }
 
   static String compactLabel(String full) {
-    final first = firstName(full);
-    if (first.length <= 7) return first;
-    return first.substring(0, 7);
+    final first = turkishLower(firstName(full));
+    return truncateLetters(first, 6);
   }
 
   @override
@@ -57,33 +57,34 @@ class ScheduleRentalSlot extends StatelessWidget {
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                    compact ? 5 : 7,
+                    compact ? 4 : 6,
                     compact ? 3 : 4,
-                    railW + (compact ? 4 : 5),
+                    railW + (compact ? 3 : 4),
                     compact ? 3 : 4,
                   ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Row(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.sports_tennis,
-                          size: compact ? 10 : 12,
-                          color: RentalSlotColors.rail.withValues(alpha: 0.85),
+                          size: compact ? 11 : 13,
+                          color: RentalSlotColors.rail.withValues(alpha: 0.9),
                         ),
-                        SizedBox(width: compact ? 3 : 4),
-                        Expanded(
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: compact ? 10 : 12,
-                              fontWeight: FontWeight.w700,
-                              color: RentalSlotColors.ink,
-                              height: 1.1,
-                              letterSpacing: -0.1,
-                            ),
+                        SizedBox(height: compact ? 2 : 3),
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: compact ? 10 : 12,
+                            fontWeight: FontWeight.w700,
+                            color: RentalSlotColors.ink,
+                            height: 1.1,
+                            letterSpacing: -0.1,
                           ),
                         ),
                       ],

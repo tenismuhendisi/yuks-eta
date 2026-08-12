@@ -7,17 +7,19 @@ import 'package:crm_app/core/providers/database_provider.dart';
 import 'package:crm_app/core/services/court_availability_service.dart';
 import 'package:crm_app/core/theme/app_theme.dart';
 import 'package:crm_app/core/utils/app_date_format.dart';
+import 'package:crm_app/features/courts/general_plan_view.dart';
 import 'package:crm_app/features/courts/widgets/add_test_credits_dialog.dart';
 import 'package:crm_app/features/courts/widgets/block_court_dialog.dart';
 import 'package:crm_app/features/courts/widgets/court_slot_cell.dart';
 import 'package:crm_app/features/courts/widgets/rent_court_dialog.dart';
 import 'package:crm_app/features/courts/widgets/week_slot_cell.dart';
-import 'package:crm_app/core/widgets/schedule_rental_slot.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum _CourtViewMode { day, week }
+
+enum _CourtPlanPane { current, general }
 
 class CourtManagementScreen extends ConsumerStatefulWidget {
   const CourtManagementScreen({
@@ -36,6 +38,7 @@ class CourtManagementScreen extends ConsumerStatefulWidget {
 class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
   DateTime _selectedDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
   _CourtViewMode _mode = _CourtViewMode.day;
+  _CourtPlanPane _pane = _CourtPlanPane.current;
   late Set<String> _expandedBlocks;
 
   @override
@@ -105,21 +108,40 @@ class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
         ? AppDateFormat.weekRange(_weekMonday, _weekMonday.add(const Duration(days: 6)))
         : AppDateFormat.fullDay(_selectedDay);
     final narrow = MediaQuery.sizeOf(context).width < 420;
+    final showGeneral = _pane == _CourtPlanPane.general &&
+        widget.role != UserRole.athlete;
 
     return Column(
       children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(narrow ? 8 : 12, 12, narrow ? 8 : 12, 4),
-          child: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Text(
-                widget.role == UserRole.athlete ? 'Kort Kiralama' : 'Kort Yönetimi',
-                style: Theme.of(context).textTheme.titleLarge,
+        if (widget.role != UserRole.athlete)
+          Padding(
+            padding: EdgeInsets.fromLTRB(narrow ? 8 : 12, 10, narrow ? 8 : 12, 4),
+            child: SegmentedButton<_CourtPlanPane>(
+              showSelectedIcon: false,
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              SegmentedButton<_CourtViewMode>(
+              segments: const [
+                ButtonSegment(
+                  value: _CourtPlanPane.current,
+                  label: Text('Güncel Plan'),
+                ),
+                ButtonSegment(
+                  value: _CourtPlanPane.general,
+                  label: Text('Genel Plan'),
+                ),
+              ],
+              selected: {_pane},
+              onSelectionChanged: (s) => setState(() => _pane = s.first),
+            ),
+          ),
+        if (!showGeneral) ...[
+          Padding(
+            padding: EdgeInsets.fromLTRB(narrow ? 8 : 12, 4, narrow ? 8 : 12, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SegmentedButton<_CourtViewMode>(
                 segments: const [
                   ButtonSegment(
                     value: _CourtViewMode.day,
@@ -139,89 +161,91 @@ class _CourtManagementScreenState extends ConsumerState<CourtManagementScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-        if (widget.role == UserRole.athlete) ...[
+          if (widget.role == UserRole.athlete) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: _MemberCreditBar(userId: widget.userId),
+            ),
+          ],
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-            child: _MemberCreditBar(userId: widget.userId),
-          ),
-        ],
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: isWeek ? 'Önceki hafta' : 'Önceki gün',
-                onPressed: _prev,
-                icon: const Icon(Icons.chevron_left),
-              ),
-              Expanded(
-                child: InkWell(
-                  onTap: _pickDay,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                    child: Text(
-                      rangeLabel,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: isWeek ? 'Önceki hafta' : 'Önceki gün',
+                  onPressed: _prev,
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickDay,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                      child: Text(
+                        rangeLabel,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              IconButton(
-                tooltip: isWeek ? 'Sonraki hafta' : 'Sonraki gün',
-                onPressed: _next,
-                icon: const Icon(Icons.chevron_right),
-              ),
-              TextButton(onPressed: _goToday, child: const Text('Bugün')),
-            ],
+                IconButton(
+                  tooltip: isWeek ? 'Sonraki hafta' : 'Sonraki gün',
+                  onPressed: _next,
+                  icon: const Icon(Icons.chevron_right),
+                ),
+                TextButton(onPressed: _goToday, child: const Text('Bugün')),
+              ],
+            ),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: _LegendBar(),
-        ),
-        const SizedBox(height: 6),
-        Expanded(
-          child: FutureBuilder<List<CourtSlot>>(
-            future: isWeek
-                ? service.getSlotsForWeek(_weekMonday)
-                : service.getSlotsForDay(_selectedDay),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final slots = snapshot.data ?? [];
-              if (slots.isEmpty) {
-                return const Center(child: Text('Kort bulunamadı'));
-              }
+          const SizedBox(height: 4),
+          Expanded(
+            child: FutureBuilder<List<CourtSlot>>(
+              future: isWeek
+                  ? service.getSlotsForWeek(_weekMonday)
+                  : service.getSlotsForDay(_selectedDay),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final slots = snapshot.data ?? [];
+                if (slots.isEmpty) {
+                  return const Center(child: Text('Kort bulunamadı'));
+                }
 
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: isWeek
-                    ? _WeekCourtGrid(
-                        slots: slots,
-                        onSlotTap: _onSlotTap,
-                        expandedBlocks: _expandedBlocks,
-                        onToggleBlock: _toggleBlock,
-                      )
-                    : _DayCourtGrid(
-                        slots: slots,
-                        onSlotTap: _onSlotTap,
-                        expandedBlocks: _expandedBlocks,
-                        onToggleBlock: _toggleBlock,
-                      ),
-              );
-            },
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: isWeek
+                      ? _WeekCourtGrid(
+                          slots: slots,
+                          onSlotTap: _onSlotTap,
+                          expandedBlocks: _expandedBlocks,
+                          onToggleBlock: _toggleBlock,
+                        )
+                      : _DayCourtGrid(
+                          slots: slots,
+                          onSlotTap: _onSlotTap,
+                          expandedBlocks: _expandedBlocks,
+                          onToggleBlock: _toggleBlock,
+                        ),
+                );
+              },
+            ),
           ),
-        ),
+        ] else
+          Expanded(
+            child: GeneralPlanView(
+              role: widget.role,
+              userId: widget.userId,
+            ),
+          ),
       ],
     );
   }
@@ -346,7 +370,7 @@ class _DayCourtGrid extends StatefulWidget {
 class _DayCourtGridState extends State<_DayCourtGrid> {
   static const _timeColWidth = 48.0;
   static const _minCourtColWidth = 88.0;
-  static const _rowHeight = 56.0;
+  static const _rowHeight = 68.0;
   static const _headerHeight = 40.0;
   static const _blockHeaderHeight = 34.0;
 
@@ -637,7 +661,7 @@ class _WeekCourtGridState extends State<_WeekCourtGrid> {
   static const _minHourColWidth = 44.0;
   /// Tüm gizli bloklar tek dar şeritte birleşir.
   static const _collapsedColWidth = 18.0;
-  static const _courtRowHeight = 36.0;
+  static const _courtRowHeight = 48.0;
   static const _dayHeaderHeight = 24.0;
   static const _hourHeaderHeight = 40.0;
   static const _emptyBg = Color(0xFFF5F5F5);
@@ -1307,126 +1331,3 @@ class _MemberCreditBar extends ConsumerWidget {
   }
 }
 
-class _LegendBar extends StatelessWidget {
-  const _LegendBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 4,
-      children: [
-        _LegendItem(color: Colors.green.shade100, label: 'Boş'),
-        _LegendItem(color: const Color(0xFFFFF3E8), label: 'Kiralama = isim'),
-        _LegendItem(color: Colors.red.shade100, label: 'Kilitli'),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 22,
-              height: 16,
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF90CAF9),
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: const Color(0xFF0D47A1), width: 2.5),
-                    ),
-                  ),
-                  const Positioned(
-                    top: 0,
-                    left: 2,
-                    child: Text('G', style: TextStyle(fontSize: 6, fontWeight: FontWeight.w900)),
-                  ),
-                  const Center(
-                    child: Text('Ç15', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w900)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Text('Grup = Ç15 + G', style: TextStyle(fontSize: 11)),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 22,
-              height: 14,
-              decoration: BoxDecoration(
-                color: const Color(0xFF90CAF9),
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: const Color(0xFF1565C0)),
-              ),
-              alignment: Alignment.center,
-              child: const Text('EK', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800)),
-            ),
-            const SizedBox(width: 4),
-            const Text('Özel = baş harf', style: TextStyle(fontSize: 11)),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 22,
-              height: 14,
-              decoration: BoxDecoration(
-                color: RentalSlotColors.fill,
-                borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: RentalSlotColors.border),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: RentalSlotColors.fill,
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: RentalSlotColors.border),
-                    ),
-                  ),
-                  const Center(
-                    child: Text('Can', style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800)),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(width: 3, color: RentalSlotColors.rail),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Text('Kiralama = sağ şerit', style: TextStyle(fontSize: 11)),
-          ],
-        ),
-        Text('Renk = antrenör', style: TextStyle(fontSize: 11, color: Colors.grey.shade700)),
-      ],
-    );
-  }
-}
-
-class _LegendItem extends StatelessWidget {
-  const _LegendItem({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
-        ),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11)),
-      ],
-    );
-  }
-}
