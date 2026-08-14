@@ -439,6 +439,32 @@ class _CoachCalendarScreenState extends ConsumerState<CoachCalendarScreen> {
     final delta = newStart.difference(lesson.startTime);
     if (delta.inMinutes == 0) return;
 
+    final duration = lesson.endTime.difference(lesson.startTime);
+    final newEnd = newStart.add(duration);
+    final lessonLabel = (lesson.title?.trim().isNotEmpty ?? false)
+        ? lesson.title!.trim()
+        : LessonType.fromString(lesson.type).label;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Dersi taşı'),
+        content: Text(
+          '$lessonLabel\n\n'
+          '${AppDateFormat.fullDay(lesson.startTime)}\n'
+          '${AppDateFormat.timeRange(lesson.startTime, lesson.endTime)}\n\n'
+          '↓\n\n'
+          '${AppDateFormat.fullDay(newStart)}\n'
+          '${AppDateFormat.timeRange(newStart, newEnd)}',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Taşı')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     final scope = await resolveRecurringScope(
       context,
       lesson: lesson,
